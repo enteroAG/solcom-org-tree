@@ -1,0 +1,13 @@
+<template>
+    <template lwc:if={hasContacts}>
+        <div class="cy-container"></div>
+    </template>
+
+    <template lwc:else>
+        <div class="slds-text-align_center slds-m-top_medium">
+            <lightning-icon icon-name="utility:error" alternative-text="Error" size="medium"></lightning-icon>
+            <p class="slds-text-color_error">Keine Kontakte</p>
+        </div>
+    </template> 
+</template>
+   
