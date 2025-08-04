@@ -1,8 +1,20 @@
 <template>
-    <lightning-modal-header label="My Modal Heading"></lightning-modal-header>
-    <lightning-modal-body> Content: {content} </lightning-modal-body>
-    <lightning-modal-footer>
-        <lightning-button label="Save" onclick={handleSave}></lightning-button>
-        <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
-    </lightning-modal-footer>
+    <lightning-modal-header label="Linker bearbeiten"></lightning-modal-header>
+    <lightning-modal-body>
+        <lightning-record-edit-form 
+            object-api-name="OrgChartLinker__c" 
+            onsuccess={handleSuccess}>
+
+            <lightning-input-field field-name="Parent__c" required="true"></lightning-input-field>
+            <lightning-input-field field-name="Child__c"></lightning-input-field>
+            <lightning-input-field field-name="Account__c" value={accountId}></lightning-input-field>
+
+            <div class="slds-m-top_medium">
+                <lightning-button variant="brand" type="submit" label="Speichern"></lightning-button>
+                <lightning-button variant="neutral" label="Abbrechen" onclick={handleCancel}
+                    class="slds-m-left_small"></lightning-button>
+            </div>
+
+        </lightning-record-edit-form>
+    </lightning-modal-body>
 </template>

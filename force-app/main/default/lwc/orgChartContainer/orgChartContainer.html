@@ -1,13 +1,7 @@
 <template>
-    <template lwc:if={hasContacts}>
-        <div class="cy-container"></div>
-    </template>
-
-    <template lwc:else>
-        <div class="slds-text-align_center slds-m-top_medium">
-            <lightning-icon icon-name="utility:error" alternative-text="Error" size="medium"></lightning-icon>
-            <p class="slds-text-color_error">Keine Kontakte</p>
+    <lightning-card title="Organigramm">
+        <div class="slds-p-around_medium">
+            <div class="cy-container" style="height: 600px; width: 100%; border: 1px solid #ccc;"></div>
         </div>
-    </template> 
+    </lightning-card>
 </template>
-   

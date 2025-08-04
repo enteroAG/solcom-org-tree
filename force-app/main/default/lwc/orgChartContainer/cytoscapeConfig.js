@@ -10,7 +10,11 @@ export const style = [
             'shape': 'roundrectangle',
             'width': 'label',
             'padding': '10px',
-            'font-size': '12px'
+            'font-size': '12px',
+            'text-wrap': 'wrap',
+            'text-max-width': 120,
+            'border-width': 2,
+            'border-color': '#005fa3'
         }
     },
     {
@@ -20,17 +24,17 @@ export const style = [
             'line-color': '#ccc',
             'target-arrow-color': '#ccc',
             'target-arrow-shape': 'triangle',
-            'curve-style': 'round-taxi',
-            'taxi-direction': 'downward',
-            'taxi-turn': 20,
-            'taxi-turn-min-distance': 10
+            'curve-style': 'bezier'
         }
     }
 ];
 
 export const layout = {
     name: 'breadthfirst',
-    spacingFactor: 0.5,
+    spacingFactor: 0.3,
     directed: true,
-    padding: 2
+    padding: 10,
+    animate: false,
+    orientation: 'vertical'
 };
+
