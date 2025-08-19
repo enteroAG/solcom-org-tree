@@ -1,20 +1,37 @@
 <template>
     <lightning-modal-header label="Linker bearbeiten"></lightning-modal-header>
     <lightning-modal-body>
-        <lightning-record-edit-form 
+        <lightning-record-form 
             object-api-name="OrgChartLinker__c" 
-            onsuccess={handleSuccess}>
-
-            <lightning-input-field field-name="Parent__c" required="true"></lightning-input-field>
-            <lightning-input-field field-name="Child__c"></lightning-input-field>
-            <lightning-input-field field-name="Account__c" value={accountId}></lightning-input-field>
+            record-id={recordId}
+            columns="2"
+            fields={fields}
+            onsuccess={handleSuccess}
+            onsubmit={handleSubmit}>
 
             <div class="slds-m-top_medium">
-                <lightning-button variant="brand" type="submit" label="Speichern"></lightning-button>
-                <lightning-button variant="neutral" label="Abbrechen" onclick={handleCancel}
-                    class="slds-m-left_small"></lightning-button>
+                <lightning-button 
+                    variant="brand" 
+                    type="submit" 
+                    label="Speichern">
+                </lightning-button>
+                <lightning-button 
+                    variant="neutral" 
+                    label="Abbrechen" 
+                    onclick={handleCancel}
+                    class="slds-m-left_small">
+                </lightning-button>
             </div>
 
-        </lightning-record-edit-form>
+        </lightning-record-form>
+
+        <template lwc:if={recordId}>
+            <lightning-button 
+                variant="destructive" 
+                label="Löschen" 
+                onclick={handleDelete}
+                class="slds-m-left_small">
+            </lightning-button>
+        </template>
     </lightning-modal-body>
 </template>

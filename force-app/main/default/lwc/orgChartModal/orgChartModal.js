@@ -1,21 +1,36 @@
 import { api } from 'lwc';
+
 import LightningModal from 'lightning/modal';
+
+import PARENT from '@salesforce/schema/OrgChartLinker__c.Parent__c';
+import CHILD from '@salesforce/schema/OrgChartLinker__c.Child__c';
+import DESCRIPTION from '@salesforce/schema/OrgChartLinker__c.Description__c';
 
 export default class OrgChartModal extends LightningModal {
     @api content;
 
-    get parentId() {
-        return this.content?.parentId || null;
-    }
+    fields = [PARENT, CHILD, DESCRIPTION];
 
-    get accountId() {
-        return this.content?.accountId || null;
+    get recordId() {
+        return this.content?.linkId || null;
+    }
+        
+    handleSubmit(event) {
+        event.preventDefault();
+        const fields = event.detail.fields;
+        fields.Account__c = this.content.accountId;
+        console.log('Submitting fields:', fields);
+        this.template.querySelector('lightning-record-form').submit(fields);   
     }
 
     handleSuccess(event) {
-        this.close('success');
+        this.close(event.detail.id);
     }
 
+    handleDelete() {
+        this.close('delete');
+    }
+    
     handleCancel() {
         this.close('cancel');
     }

@@ -1,13 +1,16 @@
 import { LightningElement, api, wire } from 'lwc';
 import { loadScript } from 'lightning/platformResourceLoader';
 import { style, layout } from './cytoscapeConfig';
+import { refreshApex } from "@salesforce/apex";
 
-import cytoscapeJS from '@salesforce/resourceUrl/cytoscapeJS';
+import cyDagreBundle from '@salesforce/resourceUrl/cyDagreBundle';
 import getOrgChartLinks from '@salesforce/apex/OrgChartController.getOrgChartLinks';
-import EditModal from 'c/orgChartModal';
+import RecordModal from 'c/orgChartModal';
 
 export default class OrgTreeContainer extends LightningElement {
     @api recordId;
+
+    wiredLinksResult;
 
     cyto;
     cytoscapeLoaded = false;
@@ -17,7 +20,9 @@ export default class OrgTreeContainer extends LightningElement {
     debugMode = true;
 
     @wire(getOrgChartLinks, { accountId: '$recordId' })
-    wiredLinks({ error, data }) {
+    wiredLinks(result) {
+        this.wiredLinksResult = result;
+        const { data, error } = result;
         if (data) {
             this.debug('wiredLinks data', data);
             if (data.length === 0) {
@@ -31,6 +36,7 @@ export default class OrgTreeContainer extends LightningElement {
                 this.contactNodes = this.generateNodesFromLinkers(data);
             }
             this.initializeCytoscape();
+            this.debug('contactNodes', this.contactNodes);
         } else if (error) {
             this.debug('wiredLinks error', error);
         }
@@ -42,9 +48,10 @@ export default class OrgTreeContainer extends LightningElement {
             return;
         }
 
-        loadScript(this, cytoscapeJS)
+        loadScript(this, cyDagreBundle)
             .then(() => {
                 this.cytoscapeLoaded = true;
+                this.debug('Cytoscape and Dagre loaded');
                 this.renderCytoscape();
             })
             .catch(error => {
@@ -63,7 +70,8 @@ export default class OrgTreeContainer extends LightningElement {
 
         this.cyto.on('tap', 'node', (evt) => {
             const nodeData = evt.target.data();
-            this.openLightningModal(nodeData);
+            this.debug('Node tapped', nodeData);
+            this.openLightningModal(RecordModal, nodeData);
         });
 
         this.cytoscapeRendered = true;
@@ -77,13 +85,17 @@ export default class OrgTreeContainer extends LightningElement {
         linkers.forEach(link => {
             const parent = link.Parent__r;
             const child = link.Child__r;
+            const description = link.Description__c;
 
             // Parent Node
             if (parent && !addedNodeIds.has(parent.Id)) {
                 nodes.push({
                     data: {
                         id: parent.Id,
-                        label: parent.Name + '(' + parent.Department || 'Keine Abteilung' + ')',
+                        label: parent.Name,
+                        linkId: link.Id,
+                        backgroundColor: 'rgba(189, 230, 92, 1)',
+                        type: 'node'
                     }
                 });
                 addedNodeIds.add(parent.Id);
@@ -95,7 +107,10 @@ export default class OrgTreeContainer extends LightningElement {
                     nodes.push({
                         data: {
                             id: child.Id,
-                            label: child.Name + '(' + child.Department || 'Keine Abteilung' + ')',
+                            label: child.Name,
+                            linkId: link.Id,
+                            backgroundColor: 'rgba(189, 230, 92, 1)',
+                            type: 'node'
                         }
                     });
                     addedNodeIds.add(child.Id);
@@ -103,25 +118,30 @@ export default class OrgTreeContainer extends LightningElement {
 
                 edges.push({
                     data: {
-                        id: parent.Id + '-' + child.Id,
+                        id: link.Id,
                         source: parent.Id,
-                        target: child.Id
+                        target: child.Id,
+                        type: 'edge'
                     }
                 });
             } else {
-                // Leerer Child → Titel anzeigen
-                const pseudoId = 'empty-' + link.Id;
+                const pseudoId = this.generateUUID();
                 nodes.push({
                     data: {
                         id: pseudoId,
+                        label: description,
+                        linkId: link.Id,
+                        backgroundColor: 'rgba(135, 140, 145, 1)',
+                        type: 'node'
                     }
                 });
 
                 edges.push({
                     data: {
-                        id: `${parent.Id}-${pseudoId}`,
+                        id: link.Id,
                         source: parent.Id,
-                        target: pseudoId
+                        target: pseudoId,
+                        type: 'edge'
                     }
                 });
             }
@@ -130,15 +150,82 @@ export default class OrgTreeContainer extends LightningElement {
         return [...nodes, ...edges];
     }
 
-    async openLightningModal(node) {
-        const result = await EditModal.open({
-            size: 'small',
-            content: {
-                parentId: node.id,
-                accountId: this.recordId
+    /* HANDLER */
+
+    handleDeleteNode(event) {
+        const nodeId = event.target.dataset.nodeId;
+    }
+
+    handleAddNode() {
+        this.debug('handleAddNode', 'Adding new node');
+        this.openLightningModal(RecordModal, { 'accountId' : this.recordId })
+        .then(result => {
+            if (result && result !== 'cancel') {
+                this.refreshNodes();
             }
+        })
+    }
+
+    handleRefresh() {
+        this.debug('handleRefresh', 'Refreshing nodes');
+        this.refreshNodes();
+    }
+
+    /* HELPER */
+
+    refreshNodes() {
+        refreshApex(this.wiredLinksResult);
+        this.generateNodesFromLinkers(this.wiredLinksResult.data);
+        this.refreshGraph(this.contactNodes);
+    }
+
+    refreshGraph(newElements) {
+        if (!this.cyto) return;
+
+        this.cyto.startBatch();
+        this.cyto.elements().remove();
+        this.cyto.add(newElements);
+        this.cyto.nodes().unlock();       
+        this.cyto.endBatch();
+        this.cyto.resize();
+        this.cyto.style().fromJson(style).update();
+
+        requestAnimationFrame(() => {
+            this.cyto.layout(layout).run();
+            this.cyto.fit(this.cyto.elements(), 30);  // 30px Padding
+        });
+
+    }
+
+    async openLightningModal(modalComponent, payload) {
+        const result = await modalComponent.open({
+            size: 'small',
+            content: payload
         });
         this.debug('openLightningModal', result);
+
+        return result;
+    }
+
+    async deleteLinker(recordId) {
+        try {
+            await deleteRecord(recordId);
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Success',
+                    message: 'Linker deleted',
+                    variant: 'success'
+                })
+            );
+        } catch (error) {
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Error deleting record',
+                    message: reduceErrors(error).join(', '),
+                    variant: 'error'
+                })
+            );
+        }
     }
 
     debug(method, obj) {
@@ -149,5 +236,24 @@ export default class OrgTreeContainer extends LightningElement {
                 console.log(method, obj);
             }
         }
+    }
+
+    generateUUID() {
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+
+        // Set the version to 4 (UUIDv4)
+        bytes[6] = (bytes[6] & 0x0f) | 0x40;
+        // Set the variant to RFC4122
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+        const hex = [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+
+        return [
+            hex.substring(0, 8),
+            hex.substring(8, 12),
+            hex.substring(12, 16),
+            hex.substring(16, 20),
+            hex.substring(20)
+        ].join('-');
     }
 }

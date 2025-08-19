@@ -2,39 +2,51 @@ export const style = [
     {
         selector: 'node',
         style: {
-            'background-color': '#0074D9',
+            'shape': 'round-rectangle',
+            'background-color': 'data(backgroundColor)',
+            'border-color': 'data(backgroundColor)',
+            'border-width': 2,
             'label': 'data(label)',
-            'color': '#fff',
+            'color': '#222',
+            'font-size': 12,
+            'text-wrap': 'wrap',
+            'text-max-width': 160,
             'text-valign': 'center',
             'text-halign': 'center',
-            'shape': 'roundrectangle',
-            'width': 'label',
-            'padding': '10px',
-            'font-size': '12px',
-            'text-wrap': 'wrap',
-            'text-max-width': 120,
-            'border-width': 2,
-            'border-color': '#005fa3'
+            'padding': '12px',
+            'width': function(node) { return node.data('label').length * 5 },
+            'height': function(node) {
+                const label = node.data('label') || '';
+                const charsPerLine = 25;
+                const lineCount = Math.ceil(label.length / charsPerLine) || 1;
+                const lineHeight = 18;
+                const padding = 16;
+                return lineCount * lineHeight + padding;
+            }
         }
     },
     {
         selector: 'edge',
         style: {
             'width': 2,
-            'line-color': '#ccc',
-            'target-arrow-color': '#ccc',
-            'target-arrow-shape': 'triangle',
-            'curve-style': 'bezier'
+            'line-color': '#2c2c2c',
+            'curve-style': 'taxi',
+            'taxi-direction': 'downward',         
+            'taxi-turn': '50%',                   
+            'taxi-turn-min-distance': 14,
+            'target-arrow-shape': 'none',
+            'source-arrow-shape': 'none'
         }
     }
 ];
 
 export const layout = {
-    name: 'breadthfirst',
-    spacingFactor: 0.3,
-    directed: true,
-    padding: 10,
-    animate: false,
-    orientation: 'vertical'
+    name: 'dagre',
+    rankDir: 'TB',      
+    nodeSep: 40,        
+    rankSep: 90,        
+    edgeSep: 12,
+    padding: 30
 };
+
 

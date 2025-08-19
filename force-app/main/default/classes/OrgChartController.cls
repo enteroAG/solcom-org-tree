@@ -6,7 +6,7 @@ public class OrgChartController {
     public static List<OrgChartLinker__c> getOrgChartLinks(Id accountId) {
         return [
             SELECT Id, Parent__r.Id, Parent__r.Name, Parent__r.Department,
-                   Child__r.Id, Child__r.Name, Child__r.Department
+                   Child__r.Id, Child__r.Name, Child__r.Department, Description__c
             FROM OrgChartLinker__c
             WHERE Account__c = :accountId
         ];
