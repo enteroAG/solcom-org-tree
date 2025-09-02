@@ -19,19 +19,26 @@ export default class OrgChartModal extends LightningModal {
         event.preventDefault();
         const fields = event.detail.fields;
         fields.Account__c = this.content.accountId;
-        console.log('Submitting fields:', fields);
         this.template.querySelector('lightning-record-form').submit(fields);   
     }
 
     handleSuccess(event) {
-        this.close(event.detail.id);
+        this.closeWithPayload('upsert', event.detail.id);
     }
 
     handleDelete() {
-        this.close('delete');
+        this.closeWithPayload('delete', this.content.linkId);
     }
     
     handleCancel() {
-        this.close('cancel');
+        this.closeWithPayload('cancel', this.content.linkId);
+    }
+
+    /* HELPER */
+    closeWithPayload(operation, payload) {
+        this.close({
+            operation: operation,
+            payload: payload || null
+        });
     }
 }

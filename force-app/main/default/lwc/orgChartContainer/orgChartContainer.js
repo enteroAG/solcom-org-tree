@@ -2,6 +2,8 @@ import { LightningElement, api, wire } from 'lwc';
 import { loadScript } from 'lightning/platformResourceLoader';
 import { style, layout } from './cytoscapeConfig';
 import { refreshApex } from "@salesforce/apex";
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { deleteRecord } from 'lightning/uiRecordApi';
 
 import cyDagreBundle from '@salesforce/resourceUrl/cyDagreBundle';
 import getOrgChartLinks from '@salesforce/apex/OrgChartController.getOrgChartLinks';
@@ -68,10 +70,20 @@ export default class OrgTreeContainer extends LightningElement {
             zoom: 0.5,
         });
 
-        this.cyto.on('tap', 'node', (evt) => {
+        // Event Handler for Node Click
+        this.cyto.on('click', 'node', (evt) => {
             const nodeData = evt.target.data();
-            this.debug('Node tapped', nodeData);
-            this.openLightningModal(RecordModal, nodeData);
+            this.debug('Node clicked', nodeData);
+            this.openLightningModal(RecordModal, nodeData)
+                .then(result => {
+                    if (result && result.operation !== 'cancel') {
+                        if (result.operation === 'delete') {
+                            this.deleteLinker(result.payload);
+                        } else if (result.operation === 'upsert') {
+                            this.refreshNodes();
+                        }
+                    }
+                });
         });
 
         this.cytoscapeRendered = true;
@@ -159,11 +171,11 @@ export default class OrgTreeContainer extends LightningElement {
     handleAddNode() {
         this.debug('handleAddNode', 'Adding new node');
         this.openLightningModal(RecordModal, { 'accountId' : this.recordId })
-        .then(result => {
-            if (result && result !== 'cancel') {
-                this.refreshNodes();
-            }
-        })
+            .then(result => {
+                if (result && result !== 'cancel') {
+                    this.refreshNodes();
+                }
+            })
     }
 
     handleRefresh() {
@@ -210,21 +222,9 @@ export default class OrgTreeContainer extends LightningElement {
     async deleteLinker(recordId) {
         try {
             await deleteRecord(recordId);
-            this.dispatchEvent(
-                new ShowToastEvent({
-                    title: 'Success',
-                    message: 'Linker deleted',
-                    variant: 'success'
-                })
-            );
+            this.debug('deleteRecord success', recordId);
         } catch (error) {
-            this.dispatchEvent(
-                new ShowToastEvent({
-                    title: 'Error deleting record',
-                    message: reduceErrors(error).join(', '),
-                    variant: 'error'
-                })
-            );
+            this.debug('deleteRecord error', error);
         }
     }
 

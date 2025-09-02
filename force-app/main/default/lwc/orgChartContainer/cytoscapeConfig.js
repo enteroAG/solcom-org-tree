@@ -30,7 +30,7 @@ export const style = [
         style: {
             'width': 2,
             'line-color': '#2c2c2c',
-            'curve-style': 'taxi',
+            'curve-style': 'round-taxi',
             'taxi-direction': 'downward',         
             'taxi-turn': '50%',                   
             'taxi-turn-min-distance': 14,
@@ -43,8 +43,8 @@ export const style = [
 export const layout = {
     name: 'dagre',
     rankDir: 'TB',      
-    nodeSep: 40,        
-    rankSep: 90,        
+    nodeSep: 20,        
+    rankSep: 40,        
     edgeSep: 12,
     padding: 30
 };
