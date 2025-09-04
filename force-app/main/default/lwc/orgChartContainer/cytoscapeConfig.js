@@ -25,6 +25,14 @@ export const style = [
             }
         }
     },
+    {      
+        selector: '.highlight',
+        style: {
+            'border-color': 'red',
+            'border-width': 4,
+            'border-opacity': 1
+        }
+    },
     {
         selector: 'edge',
         style: {

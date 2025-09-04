@@ -6,6 +6,7 @@
                 <c-org-chart-lookup 
                     data-name="parent"
                     placeholder="Kontakt oder Freitext wählen…"
+                    value={source}
                     onchange={handleLookupChange}>
                 </c-org-chart-lookup>
 
@@ -14,6 +15,7 @@
             <lightning-layout-item padding="around-medium" size="6">
                 <c-org-chart-lookup 
                     data-name="child"
+                    value={target}
                     placeholder="Kontakt oder Freitext wählen…"
                     onchange={handleLookupChange}>
                 </c-org-chart-lookup>

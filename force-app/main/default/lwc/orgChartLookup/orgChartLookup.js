@@ -7,6 +7,7 @@ const MIN_CHARS = 2;
 export default class OrgChartLookupDrawer extends LightningElement {
     @api placeholder = 'Suchen...';
     @api disabled = false;
+    @api value;
 
     @track inputValue = '';
     isOpen = false;
@@ -39,23 +40,34 @@ export default class OrgChartLookupDrawer extends LightningElement {
         }));
     }
 
-    // UUID v4
-    generateUUID() {
-        const bytes = crypto.getRandomValues(new Uint8Array(16));
-        bytes[6] = (bytes[6] & 0x0f) | 0x40;
-        bytes[8] = (bytes[8] & 0x3f) | 0x80;
-        const hex = [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
-        return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-');
-    }
-
     // Apex Wire (reagiert auf inputValue)
     @wire(searchContacts, { searchKey: '$inputValue' })
     wiredContacts({ data, error }) {
         if (error) { this.results = []; this.isLoading = false; return; }
         if (data) {
-            if ((this.inputValue || '').trim().length < MIN_CHARS) { this.results = []; this.isLoading = false; return; }
+            if ((this.inputValue || '').trim().length < MIN_CHARS) {
+                this.results = [];
+                this.isLoading = false;
+                return; 
+            }
+
             this.results = data; this.isLoading = false;
         }
+    }
+
+    @api
+    setSelection(selection) {
+        // Erwartet { id, name } oder null
+        this.selection = selection || null;
+        this.inputValue = selection?.name || '';
+        this.isOpen = false;
+
+        // Optional: Parent sofort informieren (praktisch fürs State-Tracking)
+        this.dispatchEvent(new CustomEvent('change', {
+            detail: this.selection, // { id, name } | null
+            bubbles: true,
+            composed: true
+        }));
     }
 
     // Drawer öffnen
@@ -121,5 +133,13 @@ export default class OrgChartLookupDrawer extends LightningElement {
         }));
         const input = this.template.querySelector('input');
         if (input) input.focus();
+    }
+
+    generateUUID() {
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        bytes[6] = (bytes[6] & 0x0f) | 0x40;
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+        const hex = [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+        return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-');
     }
 }

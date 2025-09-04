@@ -5,6 +5,12 @@ import LightningModal from 'lightning/modal';
 export default class OrgChartModal extends LightningModal {
     @api content;
 
+    renderedCallback() {
+        const parentLookup = this.template.querySelector('c-org-chart-lookup[data-side="parent"]');
+        const childLookup = this.template.querySelector('c-org-chart-lookup[data-side="child"]');
+
+    }
+
     linkData = {};
 
     get id() {
