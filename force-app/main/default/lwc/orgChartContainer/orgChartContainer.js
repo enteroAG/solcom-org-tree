@@ -69,21 +69,25 @@ export default class OrgTreeContainer extends LightningElement {
             layout: layout,
             zoom: 0.5,
         });
-
-        // Event Handler for Node Click
-        this.cyto.on('click', 'node', (evt) => {
-            const nodeData = evt.target.data();
-            this.debug('Node clicked', nodeData);
-            this.openLightningModal(RecordModal, nodeData)
+        
+        this.cyto.on('click', 'edge', (evt) => {
+            const edgeData = evt.target.data();
+            this.debug('Edge clicked', edgeData);
+            this.openLightningModal(RecordModal, edgeData)
                 .then(result => {
                     if (result && result.operation !== 'cancel') {
                         if (result.operation === 'delete') {
-                            this.deleteLinker(result.payload);
+                            this.handleDeleteEdge(result.payload);
                         } else if (result.operation === 'upsert') {
                             this.refreshNodes();
                         }
                     }
                 });
+        });
+
+        this.cyto.on('click', 'node', (evt) => {
+            const nodeData = evt.target.data();
+            this.debug('Node clicked', nodeData);
         });
 
         this.cytoscapeRendered = true;
@@ -164,8 +168,13 @@ export default class OrgTreeContainer extends LightningElement {
 
     /* HANDLER */
 
-    handleDeleteNode(event) {
-        const nodeId = event.target.dataset.nodeId;
+    handleDeleteEdge(recordId) {
+        this.debug('handleDeleteEdge', 'Deleting record with ID: ' + recordId);
+        this.deleteLinker(recordId)
+            .then(result => {
+                this.debug('deleteLinker result', result);
+                this.refreshNodes();
+            });
     }
 
     handleAddNode() {
@@ -220,12 +229,8 @@ export default class OrgTreeContainer extends LightningElement {
     }
 
     async deleteLinker(recordId) {
-        try {
-            await deleteRecord(recordId);
-            this.debug('deleteRecord success', recordId);
-        } catch (error) {
-            this.debug('deleteRecord error', error);
-        }
+        const result = await deleteRecord(recordId);
+        return result;
     }
 
     debug(method, obj) {

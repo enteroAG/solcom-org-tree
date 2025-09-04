@@ -1,37 +1,23 @@
 <template>
-    <lightning-modal-header label="Edit Node"></lightning-modal-header>
+    <lightning-modal-header label="Node"></lightning-modal-header>
     <lightning-modal-body>
-        <lightning-record-form 
-            object-api-name="OrgChartLinker__c" 
-            record-id={recordId}
-            columns="2"
-            fields={fields}
-            onsuccess={handleSuccess}
-            onsubmit={handleSubmit}>
+        <lightning-layout>
+            <lightning-layout-item padding="around-medium" size="6">
+                <c-org-chart-lookup 
+                    data-name="parent"
+                    placeholder="Kontakt oder Freitext wählen…"
+                    onchange={handleLookupChange}>
+                </c-org-chart-lookup>
 
-            <div class="slds-m-top_medium">
-                <lightning-button 
-                    variant="brand" 
-                    type="submit" 
-                    label="Speichern">
-                </lightning-button>
-                <lightning-button 
-                    variant="neutral" 
-                    label="Abbrechen" 
-                    onclick={handleCancel}
-                    class="slds-m-left_small">
-                </lightning-button>
-            </div>
+            </lightning-layout-item>
 
-        </lightning-record-form>
-
-        <template lwc:if={recordId}>
-            <lightning-button 
-                variant="destructive" 
-                label="Löschen" 
-                onclick={handleDelete}
-                class="slds-m-left_small">
-            </lightning-button>
-        </template>
+            <lightning-layout-item padding="around-medium" size="6">
+                <c-org-chart-lookup 
+                    data-name="child"
+                    placeholder="Kontakt oder Freitext wählen…"
+                    onchange={handleLookupChange}>
+                </c-org-chart-lookup>
+            </lightning-layout-item>
+        </lightning-layout>
     </lightning-modal-body>
 </template>
