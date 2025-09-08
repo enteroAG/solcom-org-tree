@@ -1,0 +1,38 @@
+<template>
+    <lightning-modal-header label="Edit Contact"></lightning-modal-header>
+
+     <lightning-record-edit-form 
+            object-api-name={objectApiName} 
+            record-id={recordId}
+            onsuccess={handleSuccess}
+            onsubmit={handleSubmit}
+            onerror={handleError}>
+
+        <lightning-modal-body>
+            <div class="slds-is-relative">
+                <template if:true={isLoading}> 
+                    <div class="slds-spinner_container">
+                        <lightning-spinner alternative-text="Loading" size="medium"  variant="brand"></lightning-spinner>
+                    </div>
+                </template>
+            </div>
+
+            <template if:false={isLoading}>
+                <template for:each={fields} for:item="field">
+                    <lightning-input-field key={field} field-name={field}>
+                    </lightning-input-field>
+                </template>
+            </template>
+
+        </lightning-modal-body>
+
+        <lightning-modal-footer>
+            <lightning-button 
+                variant="brand" 
+                type="submit" 
+                label="Save">
+            </lightning-button>
+        </lightning-modal-footer>
+
+    </lightning-record-edit-form>
+</template>
