@@ -1,11 +1,11 @@
 import { LightningElement, api, wire } from 'lwc';
 import { loadScript } from 'lightning/platformResourceLoader';
-import { style, layout } from './cytoscapeConfig';
+import { style, layout, htmlConfig } from './cytoscapeConfig';
 import { refreshApex } from "@salesforce/apex";
 import { deleteRecord, createRecord } from 'lightning/uiRecordApi';
 import getOrgChartData from '@salesforce/apex/OrgChartController.getOrgChartData';
 
-import cyDagreBundle from '@salesforce/resourceUrl/cyDagreBundle';
+import cytoscapeComplete from '@salesforce/resourceUrl/cytoscapeComplete';
 import EditModal from 'c/orgChartEditModal';
 import ConfirmPrompt from 'c/orgChartConfirmPrompt';
 
@@ -22,6 +22,14 @@ export default class OrgTreeContainer extends LightningElement {
     wiredResult;
 
     isLoading = false;
+
+    throttleId = null;
+    draggedNode = null;
+
+    NEAR_PX = 50;
+    NEAR2 = this.NEAR_PX * this.NEAR_PX;
+
+    FIT_LEVEL = 80;
 
     @wire(getOrgChartData, { recordId: '$recordId', orgChartId: 'default' })
     wiredResult(result) {
@@ -45,7 +53,7 @@ export default class OrgTreeContainer extends LightningElement {
             return;
         }
 
-        loadScript(this, cyDagreBundle)
+        loadScript(this, cytoscapeComplete)
             .then(() => {
                 this.cytoscapeLoaded = true;
                 this.debug('[CYTOSCAPE]: Scripts loaded');
@@ -57,95 +65,133 @@ export default class OrgTreeContainer extends LightningElement {
     }
 
     renderCytoscape() {
-        this.cyto = cytoscape({
-            container: this.template.querySelector('.cy-container'),
+        const api = window.cytoscapeComplete;
+        if (!api || typeof api.create !== 'function') {
+            this.debug('[CYTOSCAPE]: cytoscapeComplete API missing', api);
+            return;
+        }
+
+        // --- lokale Helpers/Konstanten ---
+        const NEAR_PX = this.NEAR_PX || 50;
+        const NEAR2 = NEAR_PX * NEAR_PX;
+        const dist2 = (a, b) => { const dx = a.x - b.x, dy = a.y - b.y; return dx * dx + dy * dy; };
+
+        const container = this.template.querySelector('.cy-container');
+
+        // --- Create ---
+        this.cyto = api.create(container, {
             elements: this.cyData,
-            style: style,
+            style,
             layout: { ...layout, fit: false },
+            htmlConfig,
+            textureOnViewport: false,
+            motionBlur: false,
+            pixelRatio: 1
         });
 
-        this.cyto.fit(this.cyto.elements(), 120);
+        // --- Canvas-Fade gegen Ghosting ---
+        const containerEl = container;
+        let canvasHideTimer = 0;
+        const hideCanvasNow = () => containerEl.classList.add('canvas-hidden');
+        const showCanvasSoon = () => {
+            if (canvasHideTimer) clearTimeout(canvasHideTimer);
+            canvasHideTimer = setTimeout(() => {
+                containerEl.classList.remove('canvas-hidden');
+                try {
+                    const h = this.cyto.nodeHtmlLabel && this.cyto.nodeHtmlLabel();
+                    if (h && typeof h.update === 'function') h.update();
+                    const r = this.cyto.renderer && this.cyto.renderer();
+                    if (r && typeof r.redraw === 'function') r.redraw();
+                } catch { }
+            }, 80);
+        };
 
+        // --- Fit/Zoom-Nähe ---
+        this.cyto.fit(this.cyto.elements(), this.FIT_LEVEL);
+
+        // --- HTML-Overlay Update (rAF-gedrosselt) ---
+        let htmlRaf = 0;
+        const updateHtml = () => {
+            if (htmlRaf) cancelAnimationFrame(htmlRaf);
+            htmlRaf = requestAnimationFrame(() => {
+                try {
+                    const h = this.cyto.nodeHtmlLabel && this.cyto.nodeHtmlLabel();
+                    if (h && typeof h.update === 'function') h.update();
+                } catch { }
+            });
+        };
+
+        this.cyto.on('render layoutstop zoom pan position viewport', updateHtml);
+        this.cyto.on('zoom pan', hideCanvasNow);
+        this.cyto.on('zoom', showCanvasSoon);
+        this.cyto.on('pan', showCanvasSoon);
+
+        // --- Clicks ---
         this.cyto.on('click', 'node', (evt) => {
             const node = evt.target;
-
+            if (this.isSalesforceId(node.id())) this.handleEditNote(node.id());
             this.debug('[CYTOSCAPE]: Node clicked', node.id());
-
-            if (this.isSalesforceId(node.id())) {
-                this.handleEditNote(node.id());
-            }
         });
 
         this.cyto.on('click', 'edge', (evt) => {
             const edge = evt.target;
             this.handleDeleteEdge(edge.id());
-
             this.debug('[CYTOSCAPE]: Edge clicked', edge.id());
         });
 
+        // --- Drag + Highlight über d.hl ---
         let draggedNode = null;
 
         this.cyto.on('grab', 'node', (evt) => {
             draggedNode = evt.target;
         });
 
-        this.cyto.on('position', 'node', (evt) => {
+        let posRaf = 0;
+        this.cyto.on('position', 'node', () => {
             if (!draggedNode) return;
+            if (posRaf) return;
+            posRaf = requestAnimationFrame(() => {
+                posRaf = 0;
+                const dp = draggedNode.position();
+                let anyChange = false;
 
-            const draggedPos = draggedNode.position();
+                this.cyto.nodes(':inside').forEach((n) => {
+                    if (n === draggedNode) return;
+                    const hit = dist2(dp, n.position()) < NEAR2;
+                    if (!!n.data('hl') !== hit) {
+                        n.data('hl', hit ? 1 : 0); // HTML-Template färbt Border rot bei hl
+                        anyChange = true;
+                    }
+                });
 
-            this.cyto.nodes().forEach((targetNode) => {
-                if (targetNode.id() === draggedNode.id()) return;
-
-                const targetPos = targetNode.position();
-                const dx = draggedPos.x - targetPos.x;
-                const dy = draggedPos.y - targetPos.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance < 50) {
-                    targetNode.addClass('highlight');
-                } else {
-                    targetNode.removeClass('highlight');
-                }
+                if (anyChange) updateHtml();
             });
         });
 
-        this.cyto.on('free', 'node', (evt) => {
+        this.cyto.on('free', 'node', () => {
             if (!draggedNode) return;
+            const dp = draggedNode.position();
 
-            const draggedPos = draggedNode.position();
-
-            this.cyto.nodes().forEach((targetNode) => {
-                if (targetNode.id() === draggedNode.id()) return;
-
-                const targetPos = targetNode.position();
-                const dx = draggedPos.x - targetPos.x;
-                const dy = draggedPos.y - targetPos.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance < 50) {
-                    const newEdge = {
-                        source: targetNode.id(),
-                        target: draggedNode.id()
-                    }
-
-                    this.cyto.add({
-                        group: 'edges',
-                        data: newEdge
-                    });
-
-                    this.handleAddEdge(newEdge)
+            this.cyto.nodes(':inside').forEach((n) => {
+                if (n === draggedNode) return;
+                const close = dist2(dp, n.position()) < NEAR2;
+                if (close) {
+                    const newEdge = { source: n.id(), target: draggedNode.id() };
+                    this.cyto.add({ group: 'edges', data: newEdge });
+                    this.handleAddEdge(newEdge);
                 }
-
-                targetNode.removeClass('highlight');
+                if (n.data('hl')) n.data('hl', 0);
             });
 
             draggedNode = null;
+            updateHtml();
         });
 
         this.cytoscapeRendered = true;
         this.debug('[CYTOSCAPE]: Rendered');
     }
+
+
 
     generateCyData(data) {
         const nodes = [];
@@ -163,7 +209,10 @@ export default class OrgTreeContainer extends LightningElement {
                         label: node.label,
                         backgroundColor: node.backgroundColor,
                         sfdata: node.sfdata,
-                        type: 'node'
+                        type: 'node',
+                        html: true,
+                        htmlW: 210,
+                        htmlH: 86
                     }
                 });
                 addedNodeIds.add(node.id);
@@ -236,8 +285,6 @@ export default class OrgTreeContainer extends LightningElement {
     }
 
     async handleEditNote(nodeId) {
-        this.debug('handleEditNote', nodeId);
-
         const result = await EditModal.open({
             size: 'small',
             recordId: nodeId,
@@ -250,8 +297,8 @@ export default class OrgTreeContainer extends LightningElement {
 
         } else {
             if (result && typeof result === 'object') {
-               this.handleAddEdge(result);
-            } 
+                this.handleAddEdge(result);
+            }
         }
     }
 
@@ -274,7 +321,7 @@ export default class OrgTreeContainer extends LightningElement {
             this.cyto.batch(() => {
                 this.cyto.elements().remove();
                 this.cyto.add(this.cyData);
-                this.cyto.elements().unlock();           
+                this.cyto.elements().unlock();
                 this.cyto.style().fromJson(style).update();
             });
 
@@ -284,7 +331,7 @@ export default class OrgTreeContainer extends LightningElement {
                 const lay = this.cyto.layout({ ...layout, fit: false });
                 lay.run();
                 lay.once('layoutstop', () => {
-                    this.cyto.fit(this.cyto.elements(), 120);
+                    this.cyto.fit(this.cyto.elements(), this.FIT_LEVEL);
                 });
                 this.isLoading = false;
 
@@ -336,7 +383,7 @@ export default class OrgTreeContainer extends LightningElement {
                         }
                         return val;
                     },
-                    2 // pretty-print
+                    2
                 );
             } catch (e) {
                 return String(value);
@@ -363,4 +410,27 @@ export default class OrgTreeContainer extends LightningElement {
         return sfIdRegex.test(id);
     }
 
+    dist2(a, b) {
+        const dx = a.x - b.x, dy = a.y - b.y;
+        return dx * dx + dy * dy;
+    }
+
+    getVisibleNodes() {
+        return this.cyto ? this.cyto.nodes(':inside') : [];
+    }
+
+    updateHighlightsThrottled() {
+        if (this.throttleId) return;
+        this.throttleId = requestAnimationFrame(() => {
+            this.throttleId = null;
+            if (!this.draggedNode || !this.cyto) return;
+
+            const draggedPos = this.draggedNode.position();
+            this.cyto.nodes(':inside').forEach((n) => {
+                if (n === this.draggedNode) return;
+                const hit = dist2(draggedPos, n.position()) < this.NEAR2;
+                if (!!n.data('hl') !== hit) n.data('hl', hit ? 1 : 0);
+            });
+        });
+    }
 }

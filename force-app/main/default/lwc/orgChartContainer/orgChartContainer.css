@@ -1,4 +1,2 @@
-.cy-container {
-    width: 100%;
-    height: 500px;
-}
+.cy-container canvas { transition: opacity .08s linear; }
+.cy-container.canvas-hidden canvas { opacity: 0; }
