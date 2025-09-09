@@ -14,8 +14,14 @@ export const style = [
             'text-valign': 'center',
             'text-halign': 'center',
             'padding': '12px',
-            'width': function(node) { return node.data('label').length * 5 },
-            'height': function(node) {
+            'width': function (node) {
+                const label = node?.data?.('label') ?? '';
+                const base = label.length * 7 + 24;
+                const minW = 80;
+                const maxW = 220;
+                return Math.max(minW, Math.min(maxW, base));
+            },
+            'height': function (node) {
                 const label = node.data('label') || '';
                 const charsPerLine = 25;
                 const lineCount = Math.ceil(label.length / charsPerLine) || 1;
@@ -25,7 +31,7 @@ export const style = [
             }
         }
     },
-    {      
+    {
         selector: '.highlight',
         style: {
             'border-color': 'red',
@@ -39,8 +45,8 @@ export const style = [
             'width': 2,
             'line-color': '#2c2c2c',
             'curve-style': 'round-taxi',
-            'taxi-direction': 'downward',         
-            'taxi-turn': '50%',                   
+            'taxi-direction': 'downward',
+            'taxi-turn': '50%',
             'taxi-turn-min-distance': 14,
             'target-arrow-shape': 'none',
             'source-arrow-shape': 'none'
@@ -50,9 +56,9 @@ export const style = [
 
 export const layout = {
     name: 'dagre',
-    rankDir: 'TB',      
-    nodeSep: 20,        
-    rankSep: 40,        
+    rankDir: 'TB',
+    nodeSep: 20,
+    rankSep: 40,
     edgeSep: 12,
     padding: 30
 };

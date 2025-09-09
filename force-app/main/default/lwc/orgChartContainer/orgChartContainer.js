@@ -2,43 +2,38 @@ import { LightningElement, api, wire } from 'lwc';
 import { loadScript } from 'lightning/platformResourceLoader';
 import { style, layout } from './cytoscapeConfig';
 import { refreshApex } from "@salesforce/apex";
-import { deleteRecord } from 'lightning/uiRecordApi';
+import { deleteRecord, createRecord } from 'lightning/uiRecordApi';
+import getOrgChartData from '@salesforce/apex/OrgChartController.getOrgChartData';
 
 import cyDagreBundle from '@salesforce/resourceUrl/cyDagreBundle';
-import getOrgChartLinks from '@salesforce/apex/OrgChartController.getOrgChartLinks';
-import RecordModal from 'c/orgChartModal';
+import EditModal from 'c/orgChartEditModal';
+import ConfirmPrompt from 'c/orgChartConfirmPrompt';
 
 export default class OrgTreeContainer extends LightningElement {
     @api recordId;
 
-    wiredLinksResult;
-
     cyto;
     cytoscapeLoaded = false;
     cytoscapeRendered = false;
-    contactNodes = [];
+    cyData = [];
 
     debugMode = true;
 
-    @wire(getOrgChartLinks, { accountId: '$recordId' })
-    wiredLinks(result) {
-        this.wiredLinksResult = result;
+    wiredResult;
+
+    @wire(getOrgChartData, { recordId: '$recordId', orgChartId: 'default' })
+    wiredResult(result) {
+        this.wiredResult = result;
+
         const { data, error } = result;
+
         if (data) {
-            if (data.length === 0) {
-                this.contactNodes = [{
-                    data: {
-                        id: 'start-node',
-                        label: 'Organigramm starten',
-                    }
-                }];
-            } else {
-                this.contactNodes = this.generateNodesFromLinkers(data);
-            }
+            this.cyData = this.generateCyData(data);
             this.initializeCytoscape();
-            this.debug('contactNodes', this.contactNodes);
+
+            this.debug('contactNodes', this.cyData);
         } else if (error) {
-            this.debug('wiredLinks error', error);
+            this.debug('wiredResult error', error);
         }
     }
 
@@ -62,25 +57,32 @@ export default class OrgTreeContainer extends LightningElement {
     renderCytoscape() {
         this.cyto = cytoscape({
             container: this.template.querySelector('.cy-container'),
-            elements: this.contactNodes,
+            elements: this.cyData,
             style: style,
             layout: layout,
             zoom: 0.5,
         });
 
+        this.cyto.on('click', 'node', (evt) => {
+            const node = evt.target;
+
+            if (this.isSalesforceId(node.id())) {
+                this.handleEditNote(node.id());
+            }
+        });
+
         this.cyto.on('click', 'edge', (evt) => {
             const edge = evt.target;
-            this.debug('Edge clicked', edge.id());
+            this.handleDeleteEdge(edge.id());
         });
 
         let draggedNode = null;
 
         this.cyto.on('grab', 'node', (evt) => {
             draggedNode = evt.target;
-            this.debug('Node grabbed', draggedNode.id());
         });
 
-        this.cyto.on('tapdrag', 'node', (evt) => {
+        this.cyto.on('position', 'node', (evt) => {
             if (!draggedNode) return;
 
             const draggedPos = draggedNode.position();
@@ -102,9 +104,6 @@ export default class OrgTreeContainer extends LightningElement {
         });
 
         this.cyto.on('free', 'node', (evt) => {
-            const draggedNode = evt.target;
-            this.debug('Node released', draggedNode.id());
-
             if (!draggedNode) return;
 
             const draggedPos = draggedNode.position();
@@ -118,13 +117,17 @@ export default class OrgTreeContainer extends LightningElement {
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
                 if (distance < 50) {
+                    const newEdge = {
+                        source: targetNode.id(),
+                        target: draggedNode.id()
+                    }
+
                     this.cyto.add({
                         group: 'edges',
-                        data: {
-                            source: draggedNode.id(),
-                            target: targetNode.id()
-                        }
+                        data: newEdge
                     });
+
+                    this.handleAddEdge(newEdge)
                 }
 
                 targetNode.removeClass('highlight');
@@ -133,112 +136,152 @@ export default class OrgTreeContainer extends LightningElement {
             draggedNode = null;
         });
 
-
         this.cytoscapeRendered = true;
     }
 
-    generateNodesFromLinkers(linkers) {
+    generateCyData(data) {
         const nodes = [];
         const edges = [];
+        const links = {};
         const addedNodeIds = new Set();
 
-        linkers.forEach(link => {
-            const parent = link.Parent__r || {
-                Id: link.Parent_Text__c,
-                Name: link.Parent_Text__c,
-                SC_APPrio__c: 4,
-                SC_Function__c: null,
-                ReportsToId: null
-            };
+        data.forEach(row => {
+            const node = row;
 
-            const child = link.Child__r || {
-                Id: link.Child_Text__c,
-                Name: link.Child_Text__c,
-                SC_APPrio__c: 4,
-                SC_Function__c: null,
-                ReportsToId: null
-            };
-
-            if (!addedNodeIds.has(parent.Id)) {
+            if (!addedNodeIds.has(node.id)) {
                 nodes.push({
                     data: {
-                        id: parent.Id,
-                        label: parent.Name,
-                        priority: parent.SC_APPrio__c,
-                        linkId: link.Id,
-                        backgroundColor: this.getNodeColor(parent.SC_APPrio__c),
+                        id: node.id,
+                        label: node.label,
+                        backgroundColor: node.backgroundColor,
+                        sfdata: node.sfdata,
                         type: 'node'
                     }
                 });
-                addedNodeIds.add(parent.Id);
+                addedNodeIds.add(node.id);
+
             }
 
-            if (!addedNodeIds.has(child.Id)) {
-                nodes.push({
-                    data: {
-                        id: child.Id,
-                        label: child.Name,
-                        priority: child.SC_APPrio__c,
-                        linkId: link.Id,
-                        backgroundColor: this.getNodeColor(child.SC_APPrio__c),
-                        type: 'node'
-                    }
-                });
-                addedNodeIds.add(child.Id);
-            }
-
-            edges.push({
-                data: {
-                    id: link.Id,
-                    source: parent.Id,
-                    target: child.Id,
-                    type: 'edge'
+            if (node.linkId) {
+                if (!links[node.linkId]) {
+                    links[node.linkId] = [];
                 }
-            })
+                links[node.linkId].push(node.id);
+            }
         });
+
+        for (const [linkId, nodeIds] of Object.entries(links)) {
+            const ids = [...nodeIds];
+            if (ids.length < 2) {
+                continue;
+            }
+            for (let i = 0; i < ids.length - 1; i++) {
+                edges.push({
+                    data: {
+                        id: linkId,
+                        source: ids[i],
+                        target: ids[i + 1],
+                        type: 'edge',
+                    }
+                });
+            }
+        }
 
         return [...nodes, ...edges];
     }
 
+
     /* HANDLER */
 
-    handleAddEdge() {
-    }
+    handleAddEdge(edge) {
+        const fields = {};
+        this.debug('handleAddEdge', edge);
 
-    handleDeleteEdge(edgeId) {
-        this.debug('handleDeleteEdge', 'deleting edge with ID: ' + edgeId);
-        this.deleteLinker(edgeId)
+        fields['Source_Text__c'] = !this.isSalesforceId(edge.source) ? edge.source : null;
+        fields['Source__c'] = !this.isSalesforceId(edge.source) ? null : edge.source;
+        fields['Target_Text__c'] = !this.isSalesforceId(edge.target) ? edge.target : null;
+        fields['Target__c'] = !this.isSalesforceId(edge.target) ? null : edge.target;
+        fields['Account__c'] = this.recordId;
+
+        this.createLinker({ apiName: 'OrgChartLinker__c', fields })
             .then(result => {
-                this.debug('deleteLinker result', result);
-                this.refreshNodes();
+                this.debug('createLinker result', result);
+                this.refreshCyData();
+            })
+            .catch(error => {
+                this.debug('createLinker error', error);
             });
     }
 
-    handleRefresh() {
-        this.debug('handleRefresh', 'Refreshing nodes');
-        this.refreshNodes();
+    async handleDeleteEdge(edgeId) {
+        this.debug('handleDeleteEdge', edgeId);
+        const result = await ConfirmPrompt.open({
+            size: 'small',
+            message: 'Are you sure you want to delete this link?'
+        });
+
+        if (result === 'confirm') {
+            this.deleteLinker(edgeId)
+                .then(result => {
+                    this.debug('deleteLinker result', result);
+                    this.refreshCyData();
+                });
+        }
+
+    }
+
+    async handleEditNote(nodeId) {
+        this.debug('handleEditNote', nodeId);
+
+        const result = await EditModal.open({
+            size: 'small',
+            recordId: nodeId,
+            objectApiName: 'Contact'
+        });
+
+        if (result === 'success') {
+            this.debug('EditModal result', result);
+            this.refreshCyData();
+        } else {
+            this.debug('EditModal closed without success');
+        }
     }
 
     /* HELPER */
 
-    refreshNodes() {
-        refreshApex(this.wiredLinksResult);
+    async refreshCyData() {
+        try {
+            await refreshApex(this.wiredResult);
 
-        this.generateNodesFromLinkers(this.wiredLinksResult.data);
+            const data = this.wiredResult?.data;
+            if (!data) return;
 
-        this.cyto.startBatch();
-        this.cyto.elements().remove();
-        this.cyto.add(this.contactNodes);
-        this.cyto.nodes().unlock();
-        this.cyto.endBatch();
-        this.cyto.resize();
-        this.cyto.style().fromJson(style).update();
+            this.cyData = this.generateCyData(data);
+            if (!Array.isArray(this.cyData)) {
+                const { nodes = [], edges = [] } = this.cyData || {};
+                this.cyData = [...nodes, ...edges];
+            }
 
-        requestAnimationFrame(() => {
-            this.cyto.layout(layout).run();
-            this.cyto.fit(this.cyto.elements(), 30);  // 30px Padding
-        });
-        this.refreshGraph();
+            this.cyto.batch(() => {
+                this.cyto.elements().remove();
+                this.cyto.add(this.cyData);
+                this.cyto.elements().unlock();           
+                this.cyto.style().fromJson(style).update();
+            });
+
+            this.cyto.resize();
+
+            requestAnimationFrame(() => {
+                const lay = this.cyto.layout(layout);
+                lay.run();
+                lay.once('layoutstop', () => {
+                    this.cyto.fit(this.cyto.elements(), 30);
+                });
+            });
+        } catch (e) {
+            console.error('refreshCyData failed', e);
+        }
+
     }
 
     async openLightningModal(modalComponent, payload) {
@@ -256,13 +299,42 @@ export default class OrgTreeContainer extends LightningElement {
         return result;
     }
 
+    async createLinker(recordInput) {
+        const result = await createRecord(recordInput);
+        return result;
+    }
+
     debug(method, obj) {
-        if (this.debugMode) {
-            if (typeof obj === 'object') {
-                console.log(method, JSON.stringify(obj, null, 2));
-            } else {
-                console.log(method, obj);
+        if (!this.debugMode) {
+            return;
+        }
+
+        const cache = new Set();
+
+        const safeStringify = (value) => {
+            try {
+                return JSON.stringify(
+                    value,
+                    (key, val) => {
+                        if (typeof val === 'object' && val !== null) {
+                            if (cache.has(val)) {
+                                return '[Circular]';
+                            }
+                            cache.add(val);
+                        }
+                        return val;
+                    },
+                    2 // pretty-print
+                );
+            } catch (e) {
+                return String(value);
             }
+        };
+
+        if (typeof obj === 'object') {
+            console.log(method, safeStringify(obj));
+        } else {
+            console.log(method, obj);
         }
     }
 
@@ -274,15 +346,9 @@ export default class OrgTreeContainer extends LightningElement {
         return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-');
     }
 
-    getNodeColor(priority) {
-        const PRIORITY_COLORS = {
-            0: '#2BA1B7',
-            1: '#87B433',
-            2: '#42A12E',
-            3: '#B2BE36',
-            4: 'rgba(135, 140, 145, 1)'
-        };
+    isSalesforceId(id) {
+        const sfIdRegex = /^[a-zA-Z0-9]{15,18}$/;
+        return sfIdRegex.test(id);
+    }
 
-        return PRIORITY_COLORS[priority] || 'rgba(135, 140, 145, 1)'; // Default color if priority not found
-    };
 }

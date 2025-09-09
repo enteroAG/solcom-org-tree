@@ -58,15 +58,16 @@ public class OrgChartController {
                 nodes.add(node);
             }
         }
-        
+  /*       
         Map<String, CytoscapeNode> nodeMap = new Map<String, CytoscapeNode>();
         for (CytoscapeNode node : nodes) {
             if (!nodeMap.containsKey(node.id)) {
                 nodeMap.put(node.id, node);
             }
-        }
+        } */
 
-        return new List<CytoscapeNode>(nodeMap.values());
+       /*  return new List<CytoscapeNode>(nodeMap.values()); */
+       return nodes;
     }
     
     private static List<CytoscapeNode> createNodesFromLinkers(OrgChartLinker__c linker, List<Contact> contacts) {
@@ -84,7 +85,7 @@ public class OrgChartController {
             node.linkId = linker.Id;
             
             node.sfdata = new Map<String, Object>{
-                'SalesforceId' => entityRecord != null ? (String) entityRecord.Id : UUID.randomUUID().toString(),
+                'Id' => entityRecord != null ? (String) entityRecord.Id : UUID.randomUUID().toString(),
                 'Name' => entityRecord != null ? entityRecord.Name : (String) linker.get(entity + '_Text__c'),
                 'Department' => entityRecord != null ? entityRecord.Department : null,
                 'SC_APPrio__c' => entityRecord != null ? entityRecord.SC_APPrio__c : null,
