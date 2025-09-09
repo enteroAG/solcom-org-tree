@@ -35,8 +35,8 @@ export const style = [
         selector: '.highlight',
         style: {
             'border-color': 'red',
-            'border-width': 4,
-            'border-opacity': 1
+            'border-width': 2,
+            'border-opacity': 0.8
         }
     },
     {

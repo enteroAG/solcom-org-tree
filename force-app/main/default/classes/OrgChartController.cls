@@ -58,16 +58,16 @@ public class OrgChartController {
                 nodes.add(node);
             }
         }
-  /*       
-        Map<String, CytoscapeNode> nodeMap = new Map<String, CytoscapeNode>();
+        
+        List<CytoscapeNode> sanitizedNodes = new List<CytoscapeNode>();
         for (CytoscapeNode node : nodes) {
-            if (!nodeMap.containsKey(node.id)) {
-                nodeMap.put(node.id, node);
-            }
-        } */
+            Map<String, Object> sfdata = node.sfdata;
 
-       /*  return new List<CytoscapeNode>(nodeMap.values()); */
-       return nodes;
+            if (node.linkId != null || (sfdata.get('SC_APPrio__c') == '1' || sfdata.get('SC_APPrio__c') == '2' || sfdata.get('SC_APPrio__c') == '3')) {
+                sanitizedNodes.add(node);
+            } 
+        }
+        return sanitizedNodes;
     }
     
     private static List<CytoscapeNode> createNodesFromLinkers(OrgChartLinker__c linker, List<Contact> contacts) {

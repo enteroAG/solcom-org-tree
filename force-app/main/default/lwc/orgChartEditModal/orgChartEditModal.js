@@ -16,8 +16,22 @@ export default class OrgChartEditModal extends LightningModal {
         ACCOUNT
     ]
 
+    get contactFilter() {
+        if (!this.recordId) return undefined;
+        return {
+            criteria: [
+                { fieldPath: 'Id', operator: 'nin', value: [this.recordId] }
+            ]
+        };
+    }
+
     @api recordId;
     @api objectApiName;
+
+    editContactMode = true;
+    isFreeInput;
+
+    freeInputValue = '';
 
     handleSuccess() {
         this.isLoading = false;
@@ -29,8 +43,36 @@ export default class OrgChartEditModal extends LightningModal {
         this.close('error');
     }
 
-    handleSubmit(event) {   
+    handleSubmit(event) {
         this.isLoading = true;
     }
 
+    handleToggleMode() {
+        this.editContactMode = !this.editContactMode;
+        this.freeInputValue = null;
+    }
+
+    handleChangeInputType(event) {
+        this.isFreeInput = event.target.checked;
+        this.selectedContactId = null;
+    }
+
+    handleFreeInputChange(event) {
+        this.freeInputValue = event.target.value;
+    }
+
+    handleContactChange(event) {
+        this.selectedContactId = event.detail.recordId;
+    }
+
+    handleSubsidiarySubmit(event) {
+        this.isLoading = true;
+
+        const newLink = {
+            source: this.recordId,
+            target: this.freeInputValue || this.selectedContactId,
+        }
+
+        this.close(newLink);
+    }
 }

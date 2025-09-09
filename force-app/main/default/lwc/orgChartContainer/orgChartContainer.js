@@ -21,6 +21,8 @@ export default class OrgTreeContainer extends LightningElement {
 
     wiredResult;
 
+    isLoading = false;
+
     @wire(getOrgChartData, { recordId: '$recordId', orgChartId: 'default' })
     wiredResult(result) {
         this.wiredResult = result;
@@ -28,12 +30,12 @@ export default class OrgTreeContainer extends LightningElement {
         const { data, error } = result;
 
         if (data) {
+            console.log('[CYTOSCAPE]: Data retrieved', data);
+
             this.cyData = this.generateCyData(data);
             this.initializeCytoscape();
-
-            this.debug('contactNodes', this.cyData);
         } else if (error) {
-            this.debug('wiredResult error', error);
+
         }
     }
 
@@ -46,7 +48,7 @@ export default class OrgTreeContainer extends LightningElement {
         loadScript(this, cyDagreBundle)
             .then(() => {
                 this.cytoscapeLoaded = true;
-                this.debug('Cytoscape and Dagre loaded');
+                this.debug('[CYTOSCAPE]: Scripts loaded');
                 this.renderCytoscape();
             })
             .catch(error => {
@@ -59,12 +61,15 @@ export default class OrgTreeContainer extends LightningElement {
             container: this.template.querySelector('.cy-container'),
             elements: this.cyData,
             style: style,
-            layout: layout,
-            zoom: 0.5,
+            layout: { ...layout, fit: false },
         });
+
+        this.cyto.fit(this.cyto.elements(), 120);
 
         this.cyto.on('click', 'node', (evt) => {
             const node = evt.target;
+
+            this.debug('[CYTOSCAPE]: Node clicked', node.id());
 
             if (this.isSalesforceId(node.id())) {
                 this.handleEditNote(node.id());
@@ -74,6 +79,8 @@ export default class OrgTreeContainer extends LightningElement {
         this.cyto.on('click', 'edge', (evt) => {
             const edge = evt.target;
             this.handleDeleteEdge(edge.id());
+
+            this.debug('[CYTOSCAPE]: Edge clicked', edge.id());
         });
 
         let draggedNode = null;
@@ -137,6 +144,7 @@ export default class OrgTreeContainer extends LightningElement {
         });
 
         this.cytoscapeRendered = true;
+        this.debug('[CYTOSCAPE]: Rendered');
     }
 
     generateCyData(data) {
@@ -187,6 +195,7 @@ export default class OrgTreeContainer extends LightningElement {
             }
         }
 
+        this.debug('[CYTOSCAPE]: Graph data generated');
         return [...nodes, ...edges];
     }
 
@@ -195,7 +204,6 @@ export default class OrgTreeContainer extends LightningElement {
 
     handleAddEdge(edge) {
         const fields = {};
-        this.debug('handleAddEdge', edge);
 
         fields['Source_Text__c'] = !this.isSalesforceId(edge.source) ? edge.source : null;
         fields['Source__c'] = !this.isSalesforceId(edge.source) ? null : edge.source;
@@ -205,16 +213,14 @@ export default class OrgTreeContainer extends LightningElement {
 
         this.createLinker({ apiName: 'OrgChartLinker__c', fields })
             .then(result => {
-                this.debug('createLinker result', result);
                 this.refreshCyData();
             })
             .catch(error => {
-                this.debug('createLinker error', error);
+
             });
     }
 
     async handleDeleteEdge(edgeId) {
-        this.debug('handleDeleteEdge', edgeId);
         const result = await ConfirmPrompt.open({
             size: 'small',
             message: 'Are you sure you want to delete this link?'
@@ -223,7 +229,6 @@ export default class OrgTreeContainer extends LightningElement {
         if (result === 'confirm') {
             this.deleteLinker(edgeId)
                 .then(result => {
-                    this.debug('deleteLinker result', result);
                     this.refreshCyData();
                 });
         }
@@ -236,14 +241,17 @@ export default class OrgTreeContainer extends LightningElement {
         const result = await EditModal.open({
             size: 'small',
             recordId: nodeId,
-            objectApiName: 'Contact'
+            objectApiName: 'Contact',
         });
 
         if (result === 'success') {
-            this.debug('EditModal result', result);
             this.refreshCyData();
+        } else if (result === 'error') {
+
         } else {
-            this.debug('EditModal closed without success');
+            if (result && typeof result === 'object') {
+               this.handleAddEdge(result);
+            } 
         }
     }
 
@@ -251,6 +259,7 @@ export default class OrgTreeContainer extends LightningElement {
 
     async refreshCyData() {
         try {
+            this.isLoading = true;
             await refreshApex(this.wiredResult);
 
             const data = this.wiredResult?.data;
@@ -272,14 +281,18 @@ export default class OrgTreeContainer extends LightningElement {
             this.cyto.resize();
 
             requestAnimationFrame(() => {
-                const lay = this.cyto.layout(layout);
+                const lay = this.cyto.layout({ ...layout, fit: false });
                 lay.run();
                 lay.once('layoutstop', () => {
-                    this.cyto.fit(this.cyto.elements(), 30);
+                    this.cyto.fit(this.cyto.elements(), 120);
                 });
+                this.isLoading = false;
+
             });
+
+            this.debug('[CYTOSCAPE]: Graph refreshed');
         } catch (e) {
-            console.error('refreshCyData failed', e);
+
         }
 
     }
@@ -289,7 +302,6 @@ export default class OrgTreeContainer extends LightningElement {
             size: 'small',
             content: payload
         });
-        this.debug('openLightningModal', result);
 
         return result;
     }
