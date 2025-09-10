@@ -127,14 +127,14 @@ export default class OrgTreeContainer extends LightningElement {
 
         this.cyto.on('click', 'node', (evt) => {
             const node = evt.target;
-            if (this.isSalesforceId(node.id())) this.handleEditNode(node.id());
-            this.debug('[CYTOSCAPE]: Node clicked', node.id());
+            this.debug('[CYTOSCAPE]: Node clicked', node.data());
+            if (this.isSalesforceId(node.id())) this.handleEditNode(node.data());
         });
 
         this.cyto.on('click', 'edge', (evt) => {
             const edge = evt.target;
+            this.debug('[CYTOSCAPE]: Edge clicked', edge);
             this.handleDeleteEdge(edge.id());
-            this.debug('[CYTOSCAPE]: Edge clicked', edge.id());
         });
 
         // Drag + Nearby Highlight (über d.hl)
@@ -308,10 +308,11 @@ export default class OrgTreeContainer extends LightningElement {
         }
     }
 
-    async handleEditNode(nodeId) {
+    async handleEditNode(node) {
         const result = await EditModal.open({
             size: 'small',
-            recordId: nodeId,
+            recordId: node.id,
+            label: node.label,
             objectApiName: 'Contact'
         });
 

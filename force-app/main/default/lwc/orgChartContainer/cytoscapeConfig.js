@@ -115,7 +115,7 @@ export const htmlConfig = [
                 <div style="
                     height:100%;width:100%;
                     background:${fill};
-                    border:2px solid ${bd};
+                    border:3px solid ${bd};
                     border-radius:12px;
                     padding:10px 12px;box-sizing:border-box;
                     display:flex;flex-direction:column;justify-content:center;">

@@ -1,5 +1,5 @@
 <template>
-    <lightning-modal-header label="Edit Contact"></lightning-modal-header>
+    <lightning-modal-header label={label}></lightning-modal-header>
 
      <!-- Contact Edit -->
     <template lwc:if={editContactMode}>
@@ -28,8 +28,8 @@
             </lightning-modal-body>
 
             <lightning-modal-footer>
-                <lightning-button variant="neutral" class="slds-m-right_medium" label="Add Subsidiary" onclick={handleToggleMode}></lightning-button>
-                <lightning-button variant="brand" type="submit" label="Save"></lightning-button>
+                <lightning-button disabled={isLoading} variant="neutral" class="slds-m-right_medium" label="Add Subsidiary" onclick={handleToggleMode}></lightning-button>
+                <lightning-button disabled={isLoading} variant="brand" type="submit" label="Save"></lightning-button>
             </lightning-modal-footer>
 
         </lightning-record-edit-form>

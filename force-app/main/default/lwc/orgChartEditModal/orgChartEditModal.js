@@ -1,8 +1,9 @@
 import { LightningElement, api } from 'lwc';
 import LightningModal from 'lightning/modal';
 
-import PRIO from "@salesforce/schema/Contact.SC_APPrio__c";
+import NAME from "@salesforce/schema/Contact.Name";
 import DEPARTMENT from "@salesforce/schema/Contact.Department";
+import PRIO from "@salesforce/schema/Contact.SC_APPrio__c";
 import REPORTSTO from "@salesforce/schema/Contact.ReportsToId";
 import ACCOUNT from "@salesforce/schema/Contact.AccountId";
 
@@ -10,8 +11,9 @@ export default class OrgChartEditModal extends LightningModal {
     isLoading = false;
 
     fields = [
-        PRIO,
+        NAME,
         DEPARTMENT,
+        PRIO,
         REPORTSTO,
         ACCOUNT
     ]
@@ -27,7 +29,7 @@ export default class OrgChartEditModal extends LightningModal {
 
     @api recordId;
     @api objectApiName;
-
+ 
     editContactMode = true;
     isFreeInput;
 
