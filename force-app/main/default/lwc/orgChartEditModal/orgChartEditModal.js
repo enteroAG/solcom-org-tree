@@ -33,18 +33,21 @@ export default class OrgChartEditModal extends LightningModal {
 
     freeInputValue = '';
 
-    handleSuccess() {
+    handleSuccess(event) {
         this.isLoading = false;
         this.close('success');
     }
 
-    handleError() {
+    handleError(event) {
         this.isLoading = false;
         this.close('error');
     }
 
     handleSubmit(event) {
+        event.preventDefault();
         this.isLoading = true;
+        const fields = event.detail.fields;
+        this.template.querySelector('lightning-record-edit-form').submit(fields);
     }
 
     handleToggleMode() {
