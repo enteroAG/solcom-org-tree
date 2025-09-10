@@ -1,8 +1,8 @@
-.cy-container,
+.cy-container { background:#fff; }
 .cy-container * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
-    outline: none;
+    outline: none !important;
 }
 
 .cy-container {

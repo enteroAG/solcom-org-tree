@@ -8,4 +8,10 @@
         <target>lightning__RecordPage</target>
         <target>lightning__HomePage</target>
     </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__RecordPage, lightning__AppPage, lightning__HomePage">
+            <property type="Integer" name="cHeight" label="Container Height" description="Height of the org chart container in pixels. Default is 500px." default="500"/>
+            <property type="Integer" name="fitLevel" label="Zoom Level" description="Zoom Level of the org chart" default="80" />
+        </targetConfig>
+    </targetConfigs>
 </LightningComponentBundle>

@@ -11,6 +11,8 @@ import ConfirmPrompt from 'c/orgChartConfirmPrompt';
 
 export default class OrgTreeContainer extends LightningElement {
     @api recordId;
+    @api cHeight;
+    @api fitLevel;
 
     cyto;
     cyData = [];
@@ -21,8 +23,6 @@ export default class OrgTreeContainer extends LightningElement {
     isLoading = false;
 
     wiredResult;
-
-    FIT_LEVEL = 80;
 
     NEAR_PX = 50;
     NEAR2 = this.NEAR_PX * this.NEAR_PX;
@@ -40,7 +40,7 @@ export default class OrgTreeContainer extends LightningElement {
 
         const { data, error } = result || {};
         if (data) {
-            this.debug('[CYTOSCAPE]: Data retrieved', data);
+            this.debug('[CYTOSCAPE]: Data retrieved', /* data */);
             this.cyData = this.generateCyData(data);
             this.initializeCytoscape();
         } else if (error) {
@@ -102,10 +102,13 @@ export default class OrgTreeContainer extends LightningElement {
             htmlConfig,
             boxSelectionEnabled: false,
             autounselectify: false,
-            autoungrabify: false
+            autoungrabify: false,
+            textureOnViewport: false,
+            motionBlur: false,
+            pixelRatio: 1
         });
 
-        this.cyto.fit(this.cyto.elements(), this.FIT_LEVEL);
+        this.cyto.fit(this.cyto.elements(), this.fitLevel);
 
         // === HTML Overlay – gebundener Listener ===
         this._updateHtml = this.updateHtml.bind(this);
@@ -124,7 +127,7 @@ export default class OrgTreeContainer extends LightningElement {
 
         this.cyto.on('click', 'node', (evt) => {
             const node = evt.target;
-            if (this.isSalesforceId(node.id())) this.handleEditNote(node.id());
+            if (this.isSalesforceId(node.id())) this.handleEditNode(node.id());
             this.debug('[CYTOSCAPE]: Node clicked', node.id());
         });
 
@@ -173,8 +176,18 @@ export default class OrgTreeContainer extends LightningElement {
                 const close = this.dist2(dp, n.position()) < this.NEAR2;
                 if (close) {
                     const newEdge = { source: n.id(), target: draggedNode.id() };
-                    this.cyto.add({ group: 'edges', data: newEdge });
-                    this.handleAddEdge(newEdge);
+
+                    const exists = this.cyto.edges().some(e => {
+                        const d = e.data();
+                        return d.source === newEdge.source && d.target === newEdge.target;
+                    });
+
+                    if (!exists) {
+                        this.cyto.add({ group: 'edges', data: newEdge });
+                        this.handleAddEdge(newEdge);
+                    } else {
+                        this.debug('[CYTOSCAPE]: Edge already exists', newEdge);
+                    }
                 }
                 if (n.data('hl')) n.data('hl', 0);
             });
@@ -261,7 +274,7 @@ export default class OrgTreeContainer extends LightningElement {
             requestAnimationFrame(() => {
                 const lay = this.cyto.layout({ ...layout, fit: false });
                 lay.run();
-                lay.once('layoutstop', () => this.cyto.fit(this.cyto.elements(), this.FIT_LEVEL));
+                lay.once('layoutstop', () => this.cyto.fit(this.cyto.elements(), this.fitLevel));
                 this.isLoading = false;
             });
 
@@ -295,7 +308,7 @@ export default class OrgTreeContainer extends LightningElement {
         }
     }
 
-    async handleEditNote(nodeId) {
+    async handleEditNode(nodeId) {
         const result = await EditModal.open({
             size: 'small',
             recordId: nodeId,
@@ -311,7 +324,6 @@ export default class OrgTreeContainer extends LightningElement {
     }
 
     /* Helpers */
-    // Abstand (ohne sqrt = schneller)
     dist2(a, b) {
         const dx = a.x - b.x, dy = a.y - b.y;
         return dx * dx + dy * dy;
@@ -387,5 +399,9 @@ export default class OrgTreeContainer extends LightningElement {
         bytes[8] = (bytes[8] & 0x3f) | 0x80;
         const hex = [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
         return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-');
+    }
+
+    get containerCSS() {
+        return 'height: ' + this.cHeight + 'px; width: 100%;';
     }
 }

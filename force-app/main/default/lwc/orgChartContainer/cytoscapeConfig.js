@@ -1,6 +1,15 @@
 // config.js
 export const style = [
     {
+        selector: 'core',
+        style: {
+            'background-color': '#fff',
+            'active-bg-opacity': 0,
+            'active-bg-size': 0, 
+            'selection-box-opacity': 0,
+        }
+    },
+    {
         selector: 'node',
         style: {
             'shape': 'round-rectangle',
@@ -95,7 +104,7 @@ export const htmlConfig = [
             const dept = d.department ?? d.sfdata?.Department ?? '';
             const name = (d.name || d.label || '').toUpperCase();
 
-            const prioBadge = prio ? 
+            const prioBadge = prio ?
                 `<span style="font-size:11px;padding:2px 8px;border:1px solid ${bd};
                     border-radius:999px;white-space:nowrap;">
                     ${prio}
