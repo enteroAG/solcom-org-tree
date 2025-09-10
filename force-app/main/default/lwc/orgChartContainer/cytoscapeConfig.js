@@ -39,7 +39,6 @@ export const style = [
             'border-opacity': 0,
             'overlay-opacity': 0,
             'underlay-opacity': 0,
-            'shadow-opacity': 0,
             'width': 'data(htmlW)',
             'height': 'data(htmlH)'
         }
@@ -90,11 +89,17 @@ export const htmlConfig = [
             const H = d.htmlH || 86;
             const isHL = !!d.hl;
             const base = d.borderColor || d.backgroundColor || '#2BA1B7';
-            const bd = d.hl ? '#ff6b6b' : (d.borderColor || d.backgroundColor || '#2BA1B7');
+            const bd = isHL ? '#ff6b6b' : base;
             const fill = d.fillColor || '#fff';
             const prio = d.prio ?? d.sfdata?.SC_APPrio__c ?? '';
             const dept = d.department ?? d.sfdata?.Department ?? '';
             const name = (d.name || d.label || '').toUpperCase();
+
+            const prioBadge = prio ? 
+                `<span style="font-size:11px;padding:2px 8px;border:1px solid ${bd};
+                    border-radius:999px;white-space:nowrap;">
+                    ${prio}
+                </span>` : '';
 
             return `
                 <div style="width:${W}px;height:${H}px;box-sizing:border-box;">
@@ -103,13 +108,10 @@ export const htmlConfig = [
                     background:${fill};
                     border:2px solid ${bd};
                     border-radius:12px;
-                    padding:10px 12px;
-                    box-sizing:border-box;
-                    display:flex;flex-direction:column;justify-content:center;
-                ">
+                    padding:10px 12px;box-sizing:border-box;
+                    display:flex;flex-direction:column;justify-content:center;">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                    <span style="font-size:11px;padding:2px 8px;border:1px solid ${bd};
-                                border-radius:999px;white-space:nowrap;">${prio}</span>
+                    ${prioBadge}
                     <span style="font-size:11px;max-width:${W - 100}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
                         ${dept}
                     </span>
@@ -118,9 +120,7 @@ export const htmlConfig = [
                     ${name}
                     </div>
                 </div>
-                </div>
-            `;
+                </div>`;
         }
-
     }
 ];

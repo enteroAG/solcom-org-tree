@@ -1,2 +1,10 @@
-.cy-container canvas { transition: opacity .08s linear; }
-.cy-container.canvas-hidden canvas { opacity: 0; }
+.cy-container,
+.cy-container * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    outline: none;
+}
+
+.cy-container {
+    user-select: none;
+}
