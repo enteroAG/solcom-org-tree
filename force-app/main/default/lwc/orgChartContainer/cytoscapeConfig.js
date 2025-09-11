@@ -3,7 +3,9 @@ export const style = [
     {
         selector: 'core',
         style: {
-            'background-color': '#fff',
+            'background-color': '#ffffff',
+            'outside-texture-bg-color': '#ffffff',
+            'active-bg-color': '#ffffff',
             'active-bg-opacity': 0,
             'active-bg-size': 0, 
             'selection-box-opacity': 0,

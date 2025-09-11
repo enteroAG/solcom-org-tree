@@ -1,4 +1,3 @@
-.cy-container { background:#fff; }
 .cy-container * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
@@ -7,4 +6,7 @@
 
 .cy-container {
     user-select: none;
+    overflow: hidden;
+    background-color:#fff;
+    transform: none;   
 }

@@ -61,7 +61,6 @@ export default class OrgTreeContainer extends LightningElement {
         this._onScroll = null;
         this._scrollTarget = null;
 
-        // rAFs beenden
         if (this._htmlRaf) cancelAnimationFrame(this._htmlRaf);
         if (this._scrollRaf) cancelAnimationFrame(this._scrollRaf);
         this._htmlRaf = 0;
@@ -103,6 +102,7 @@ export default class OrgTreeContainer extends LightningElement {
             boxSelectionEnabled: false,
             autounselectify: false,
             autoungrabify: false,
+            hideEdgesOnViewport: true,
             textureOnViewport: false,
             motionBlur: false,
             pixelRatio: 1
@@ -110,11 +110,9 @@ export default class OrgTreeContainer extends LightningElement {
 
         this.cyto.fit(this.cyto.elements(), this.fitLevel);
 
-        // === HTML Overlay – gebundener Listener ===
         this._updateHtml = this.updateHtml.bind(this);
         this.cyto.on('render layoutstop zoom pan position viewport', this._updateHtml);
 
-        // === Scroll-Fix (Offsets neu berechnen) ===
         const scrollTarget = this.getScrollParent(container);
         this._scrollTarget = scrollTarget;
         this._onScroll = this.onScroll.bind(this);
@@ -137,7 +135,6 @@ export default class OrgTreeContainer extends LightningElement {
             this.handleDeleteEdge(edge.id());
         });
 
-        // Drag + Nearby Highlight (über d.hl)
         let draggedNode = null;
 
         this.cyto.on('grab', 'node', (evt) => {
@@ -158,7 +155,7 @@ export default class OrgTreeContainer extends LightningElement {
                     if (n === draggedNode) return;
                     const hit = this.dist2(dp, n.position()) < this.NEAR2;
                     if (!!n.data('hl') !== hit) {
-                        n.data('hl', hit ? 1 : 0); // HTML färbt Border rot bei hl
+                        n.data('hl', hit ? 1 : 0); 
                         anyChange = true;
                     }
                 });
