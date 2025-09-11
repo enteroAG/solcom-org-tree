@@ -37,7 +37,7 @@ public class OrgChartController {
             ' WHERE Account__c = :recordId'
             );
         
-        if (contacts.isEmpty() || linkers.isEmpty()) {
+        if (contacts.isEmpty() && linkers.isEmpty()) {
             throw new CustomOrgChartException('No contacts or linkers found for the provided record ID.');
         }
         
