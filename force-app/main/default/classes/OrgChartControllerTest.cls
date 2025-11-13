@@ -2,11 +2,13 @@
 private class OrgChartControllerTest {
     @TestSetup
     static void makeData() {
-        Id recTypeId = Schema.SObjectType.Account.getRecordTypeInfosByName().get('Customer').getRecordTypeId();
+        Id recTypeId = [SELECT Id FROM RecordType WHERE DeveloperName = 'Customer'].Id;
+        Id recTypeIdContact = [SELECT Id FROM RecordType WHERE DeveloperName = 'Customer_Contact'].Id;
 
         Account testAccount = new Account(
             Name = 'Test Account',
-            RecordTypeId = recTypeId
+            RecordTypeId = recTypeId,
+            SC_ExternalAccountNo__c = '1234567890'
         );
         insert testAccount;
 
@@ -17,6 +19,8 @@ private class OrgChartControllerTest {
                 SC_APPrio__c = String.valueOf(Math.mod(i, 5) + 1),
                 Department = 'Department ' + Math.mod(i, 3),
                 AccountId = testAccount.Id,
+                RecordTypeId = recTypeIdContact,
+                Email = 'test@test.dummy',
                 ReportsToId = (i > 0) ? contacts[i - 1].Id : null
             ));     
         }
@@ -41,6 +45,6 @@ private class OrgChartControllerTest {
 
         List<OrgChartController.CytoscapeNode> nodes = OrgChartController.getOrgChartData(testAccount.Id, 'default');
 
-        Assert.areEqual(10, nodes.size(), 'Expected 15 nodes in the org chart data.');
+        Assert.areEqual(10, nodes.size(), 'Expected 10 nodes in the org chart data.');
     }
 }

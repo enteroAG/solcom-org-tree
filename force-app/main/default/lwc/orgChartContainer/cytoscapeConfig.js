@@ -103,6 +103,7 @@ export const htmlConfig = [
             const bd = isHL ? '#ff6b6b' : base;
             const fill = d.fillColor || '#fff';
             const prio = d.prio ?? d.sfdata?.SC_APPrio__c ?? '';
+            const func = d.sfdata?.SC_Function__c || '';
             const dept = d.department ?? d.sfdata?.Department ?? '';
             const name = (d.name || d.label || '').toUpperCase();
 
@@ -124,6 +125,7 @@ export const htmlConfig = [
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                     ${prioBadge}
                     <span style="font-size:11px;max-width:${W - 100}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        ${func}</br>
                         ${dept}
                     </span>
                     </div>

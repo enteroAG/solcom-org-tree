@@ -4,6 +4,7 @@ import LightningModal from 'lightning/modal';
 import NAME from "@salesforce/schema/Contact.Name";
 import DEPARTMENT from "@salesforce/schema/Contact.Department";
 import PRIO from "@salesforce/schema/Contact.SC_APPrio__c";
+import FUNC from "@salesforce/schema/Contact.SC_Function__c";
 import REPORTSTO from "@salesforce/schema/Contact.ReportsToId";
 import ACCOUNT from "@salesforce/schema/Contact.AccountId";
 
@@ -14,6 +15,7 @@ export default class OrgChartEditModal extends LightningModal {
         NAME,
         DEPARTMENT,
         PRIO,
+        FUNC,
         REPORTSTO,
         ACCOUNT
     ]

@@ -6,7 +6,7 @@ public class OrgChartController {
         '0' => '#2BA1B7',
         '1' => '#87B433',
         '2' => '#42A12E',
-        '3' => '#B2BE36',
+        '3' => '#EFBF04',
         '4' => 'rgba(135, 140, 145, 1)'
     };
     
@@ -14,7 +14,7 @@ public class OrgChartController {
     private static final String CONTACT_OBJECT = 'Contact';
     
     private static final List<String> CONTACT_FIELDS = new List<String>{
-        'Id', 'Name', 'Department', 'SC_APPrio__c', 'ReportsToId', 'ReportsTo.Name'
+        'Id', 'Name', 'Department', 'SC_APPrio__c', 'ReportsToId', 'ReportsTo.Name', 'SC_Function__c'
     };
     private static final List<String> LINKER_FIELDS = new List<String>{
         'Id', 'Source__c', 'Target__c', 'Source_Text__c', 'Target_Text__c', 'Account__c'
@@ -89,6 +89,7 @@ public class OrgChartController {
                 'Name' => entityRecord != null ? entityRecord.Name : (String) linker.get(entity + '_Text__c'),
                 'Department' => entityRecord != null ? entityRecord.Department : null,
                 'SC_APPrio__c' => entityRecord != null ? entityRecord.SC_APPrio__c : null,
+                'SC_Function__c' => entityRecord != null ? entityRecord.SC_Function__c : null,
                 'ReportsToId' => entityRecord != null ? entityRecord.ReportsToId : null,
                 'ReportsToName' => entityRecord != null ? entityRecord.ReportsTo?.Name : null
             };
