@@ -2,7 +2,7 @@ import { LightningElement, api, wire } from 'lwc';
 import { loadScript } from 'lightning/platformResourceLoader';
 import { style, layout, htmlConfig } from './cytoscapeConfig';
 import { refreshApex } from '@salesforce/apex';
-import { deleteRecord, createRecord } from 'lightning/uiRecordApi';
+import { deleteRecord, createRecord, updateRecord } from 'lightning/uiRecordApi';
 import getOrgChartData from '@salesforce/apex/OrgChartController.getOrgChartData';
 
 import cytoscapeComplete from '@salesforce/resourceUrl/cytoscapeComplete';
@@ -42,7 +42,10 @@ export default class OrgTreeContainer extends LightningElement {
         const { data, error } = result || {};
         if (data) {
             this.debug('[CYTOSCAPE]: Data retrieved', data);
+
             this.cyData = this.generateCyData(data);
+            this.debug('[CYTOSCAPE]: Graph data generated', this.cyData);
+
             this.initializeCytoscape();
         } else if (error) {
             this.debug('[CYTOSCAPE]: Data error', error);
@@ -125,13 +128,13 @@ export default class OrgTreeContainer extends LightningElement {
         this.cyto.on('click', 'node', (evt) => {
             const node = evt.target;
             this.debug('[CYTOSCAPE]: Node clicked', node.data());
-            if (this.isSalesforceId(node.id())) this.handleEditNode(node.data());
+            this.handleNodeClick(node.data());
         });
 
         this.cyto.on('click', 'edge', (evt) => {
             const edge = evt.target;
             this.debug('[CYTOSCAPE]: Edge clicked', edge);
-            this.handleDeleteEdge(edge.id());
+            this.handleEdgeClick(edge.id());
         });
 
         let draggedNode = null;
@@ -283,40 +286,31 @@ export default class OrgTreeContainer extends LightningElement {
     /* CRUD Handlers */
     handleAddEdge(edge) {
         const fields = {};
-        fields['Source_Text__c'] = !this.isSalesforceId(edge.source) ? edge.source : null;
+        fields['Source_Text__c'] = !this.isSalesforceId(edge.source) ? edge.source : '';
         fields['Source__c'] = !this.isSalesforceId(edge.source) ? null : edge.source;
-        fields['Target_Text__c'] = !this.isSalesforceId(edge.target) ? edge.target : null;
+        fields['Target_Text__c'] = !this.isSalesforceId(edge.target) ? edge.target : '';
         fields['Target__c'] = !this.isSalesforceId(edge.target) ? null : edge.target;
         fields['Account__c'] = this.recordId;
 
-        this.createLinker({ apiName: 'OrgChartLinker__c', fields })
+        this.createEdge({ apiName: 'OrgChartLinker__c', fields })
             .then(() => this.refreshCyData())
-            .catch((error) => this.debug('[CYTOSCAPE]: add edge error', error));
+            .catch((error) => console.error('[CYTOSCAPE]: create edge error', error));
     }
 
-    async handleDeleteEdge(edgeId) {
-        const result = await ConfirmPrompt.open({
-            size: 'small',
-            message: 'Are you sure you want to delete this link?'
-        });
-        if (result === 'confirm') {
-            this.deleteLinker(edgeId).then(() => this.refreshCyData());
-        }
-    }
+    handleUpdateEdge(edge) {
+        const fields = {};
+        fields['Id'] = this.wiredResult?.data?.find((e) => e.label === edge.id)?.linkId
+        fields['Source_Text__c'] = !this.isSalesforceId(edge.source) ? edge.source : '';
+        fields['Source__c'] = !this.isSalesforceId(edge.source) ? null : edge.source;
+        fields['Target_Text__c'] = !this.isSalesforceId(edge.target) ? edge.target : '';
+        fields['Target__c'] = this.isSalesforceId(edge.target) ? edge.target : null;
+        fields['Account__c'] = this.recordId;
 
-    async handleEditNode(node) {
-        const result = await EditModal.open({
-            size: 'small',
-            recordId: node.id,
-            label: node.label,
-            objectApiName: 'Contact'
-        });
+        this.debug('[CYTOSCAPE]: Update edge', fields);
 
-        if (result === 'success') {
-            this.refreshCyData();
-        } else if (result && typeof result === 'object') {
-            this.handleAddEdge(result);
-        }
+        this.updateEdge({ fields })
+            .then(() => this.refreshCyData())
+            .catch((error) => console.log('[CYTOSCAPE]: update edge error', error.message));
     }
 
     async handleAddNode() {
@@ -329,7 +323,45 @@ export default class OrgTreeContainer extends LightningElement {
         }
     } 
 
+    async handleEdgeClick(edgeId) {
+        const result = await ConfirmPrompt.open({
+            size: 'small',
+            message: 'Are you sure you want to delete this link?'
+        });
+        if (result === 'confirm') {
+            this.deleteEdge(edgeId).then(() => this.refreshCyData());
+        }
+    }
+
+    async handleNodeClick(node) {
+        const typeOfNode = this.isSalesforceId(node.id) ? 'contact' : 'placeholder';
+
+        const result = await EditModal.open({
+            size: 'small',
+            objectApiName: 'Contact',
+            recordId: node.id,
+            linkId: node.linkId,
+            label: node.label,
+            typeOfNode: typeOfNode
+        });
+
+        if (result === 'success') {
+            this.refreshCyData();
+        } else if (result && typeof result === 'object') {
+            if (result.update) {
+                this.handleUpdateEdge(result.update);
+            } else if (result.add) {
+                this.handleAddEdge(result.add);
+            }
+        }
+    }
+
     /* Helpers */
+
+    async deleteEdge(recordId) { return deleteRecord(recordId); }
+    async createEdge(recordInput) { return createRecord(recordInput); }
+    async updateEdge(recordInput) { return updateRecord(recordInput); }
+
     dist2(a, b) {
         const dx = a.x - b.x, dy = a.y - b.y;
         return dx * dx + dy * dy;
@@ -365,9 +397,6 @@ export default class OrgTreeContainer extends LightningElement {
         }
         return window;
     }
-
-    async deleteLinker(recordId) { return deleteRecord(recordId); }
-    async createLinker(recordInput) { return createRecord(recordInput); }
 
     isSalesforceId(id) {
         const sfIdRegex = /^[a-zA-Z0-9]{15,18}$/;

@@ -1,87 +1,100 @@
 <template>
     <lightning-modal-header label={label}></lightning-modal-header>
 
-     <!-- Contact Edit -->
-    <template lwc:if={editContactMode}>
+    <!-- Node Edit -->
+    <template lwc:if={editPlaceholder}>
+        <lightning-modal-body>
+            <lightning-record-picker label="Replace Placeholder with" placeholder="Search Contacts..." data-id="contactNodePicker"
+                onchange={handleContactChange} object-api-name="Contact">
+            </lightning-record-picker>
+        </lightning-modal-body>
 
-        <lightning-record-edit-form object-api-name={objectApiName} record-id={recordId} onsuccess={handleSuccess}
-            onsubmit={handleSubmit} onerror={handleError}>
+        <lightning-modal-footer>
+            <lightning-button variant="brand" onclick={handleContactPick} label="Save"></lightning-button>
+        </lightning-modal-footer>
+    </template>
 
+
+    <!-- Contact Edit -->
+    <template lwc:elseif={editContact}>
+
+        <template lwc:if={contactView}>
+            <lightning-record-edit-form object-api-name={objectApiName} record-id={recordId} onsuccess={handleSuccess}
+                onsubmit={handleSubmit} onerror={handleError}>
+
+                <lightning-modal-body>
+                    <div class="slds-is-relative">
+                        <template if:true={isLoading}>
+                            <div class="slds-spinner_container">
+                                <lightning-spinner alternative-text="Loading" size="medium"
+                                    variant="brand"></lightning-spinner>
+                            </div>
+                        </template>
+                    </div>
+
+                    <template if:false={isLoading}>
+                        <template for:each={fields} for:item="field">
+                            <lightning-input-field key={field} field-name={field}>
+                            </lightning-input-field>
+                        </template>
+                    </template>
+
+
+                </lightning-modal-body>
+
+                <lightning-modal-footer>
+                    <lightning-button disabled={isLoading} variant="neutral" class="slds-m-right_medium" label="Add Subsidiary" onclick={handleToggleContactMode}></lightning-button>
+                    <lightning-button disabled={isLoading} variant="brand" type="submit" label="Save"></lightning-button>
+                </lightning-modal-footer>
+
+            </lightning-record-edit-form>
+        </template>
+
+        <template lwc:else>
+            <!-- Add Subsidiary -->
             <lightning-modal-body>
                 <div class="slds-is-relative">
                     <template if:true={isLoading}>
                         <div class="slds-spinner_container">
-                            <lightning-spinner alternative-text="Loading" size="medium"
-                                variant="brand"></lightning-spinner>
+                            <lightning-spinner alternative-text="Loading" size="medium" variant="brand"></lightning-spinner>
                         </div>
                     </template>
                 </div>
 
                 <template if:false={isLoading}>
-                    <template for:each={fields} for:item="field">
-                        <lightning-input-field key={field} field-name={field}>
-                        </lightning-input-field>
+                    <template lwc:if={isFreeInput}>
+                        <lightning-input label="Free Input" value={freeInputValue} type="text" data-id="freeInput"
+                            onchange={handleFreeInputChange}>
+                        </lightning-input>
+                    </template>
+
+                    <template lwc:else>
+                        <lightning-record-picker label="Contacts" placeholder="Search Contacts..." data-id="contactPicker"
+                            onchange={handleContactChange} filter={contactFilter} object-api-name="Contact">
+                        </lightning-record-picker>
                     </template>
                 </template>
-
-
             </lightning-modal-body>
 
             <lightning-modal-footer>
-                <lightning-button disabled={isLoading} variant="neutral" class="slds-m-right_medium" label="Add Subsidiary" onclick={handleToggleMode}></lightning-button>
-                <lightning-button disabled={isLoading} variant="brand" type="submit" label="Save"></lightning-button>
-            </lightning-modal-footer>
+                <lightning-layout horizontal-align="spread" vertical-align="center">
 
-        </lightning-record-edit-form>
-    </template>
+                    <template if:false={editContactMode}>
+                        <lightning-layout-item padding="around-medium" size="2">
+                            <lightning-input type="toggle" label="Switch Input" name="inputToggle" variant="label-hidden"
+                                message-toggle-active="Free Input" message-toggle-inactive="Contact Search"
+                                onchange={handleChangeInputType}>
+                            </lightning-input>
+                        </lightning-layout-item>
+                    </template>
 
-    <!-- Add Subsidiary -->
-    <template lwc:else>
-        <lightning-modal-body>
-            <div class="slds-is-relative">
-                <template if:true={isLoading}>
-                    <div class="slds-spinner_container">
-                        <lightning-spinner alternative-text="Loading" size="medium" variant="brand"></lightning-spinner>
-                    </div>
-                </template>
-            </div>
-
-            <template if:false={isLoading}>
-                <template lwc:if={isFreeInput}>
-                    <lightning-input label="Free Input" value={freeInputValue} type="text" data-id="freeInput"
-                        onchange={handleFreeInputChange}>
-                    </lightning-input>
-                </template>
-
-                <template lwc:else>
-                    <lightning-record-picker label="Contacts" placeholder="Search Contacts..." data-id="contactPicker"
-                        onchange={handleContactChange} filter={contactFilter} object-api-name="Contact">
-                    </lightning-record-picker>
-                </template>
-            </template>
-
-
-        </lightning-modal-body>
-
-        <lightning-modal-footer>
-            <lightning-layout horizontal-align="spread" vertical-align="center">
-
-                <template if:false={editContactMode}>
-                    <lightning-layout-item padding="around-medium" size="2">
-                        <lightning-input type="toggle" label="Switch Input" name="inputToggle" variant="label-hidden"
-                            message-toggle-active="Free Input" message-toggle-inactive="Contact Search"
-                            onchange={handleChangeInputType}>
-                        </lightning-input>
+                    <lightning-layout-item size="6">
+                        <lightning-button variant="neutral" class="slds-m-right_medium" label="Edit Contact" onclick={handleToggleContactMode}></lightning-button>
+                        <lightning-button variant="brand" label="Save" onclick={handleSubsidiarySubmit}></lightning-button>
                     </lightning-layout-item>
-                </template>
 
-                <lightning-layout-item size="6">
-                    <lightning-button variant="neutral" class="slds-m-right_medium" label="Edit Contact" onclick={handleToggleMode}></lightning-button>
-                    <lightning-button variant="brand" label="Save" onclick={handleSubsidiarySubmit}></lightning-button>
-                </lightning-layout-item>
-
-            </lightning-layout>
-        </lightning-modal-footer>
-
+                </lightning-layout>
+            </lightning-modal-footer>
+        </template>
     </template>
 </template>

@@ -31,13 +31,14 @@ export default class OrgChartEditModal extends LightningModal {
 
     @api recordId;
     @api objectApiName;
- 
-    editContactMode = true;
+    @api typeOfNode;
+
+    contactView = true;
     isFreeInput;
 
     freeInputValue = '';
 
-    handleSuccess(event) {
+    handleSuccess() {
         this.isLoading = false;
         this.close('success');
     }
@@ -54,11 +55,6 @@ export default class OrgChartEditModal extends LightningModal {
         this.template.querySelector('lightning-record-edit-form').submit(fields);
     }
 
-    handleToggleMode() {
-        this.editContactMode = !this.editContactMode;
-        this.freeInputValue = null;
-    }
-
     handleChangeInputType(event) {
         this.isFreeInput = event.target.checked;
         this.selectedContactId = null;
@@ -72,14 +68,35 @@ export default class OrgChartEditModal extends LightningModal {
         this.selectedContactId = event.detail.recordId;
     }
 
-    handleSubsidiarySubmit(event) {
-        this.isLoading = true;
+    handleSubsidiarySubmit() {
+        this.close({
+            'add' : {
+                source: this.recordId,
+                target: this.freeInputValue || this.selectedContactId
+            }
+        });
+    }
 
-        const newLink = {
-            source: this.recordId,
-            target: this.freeInputValue || this.selectedContactId,
-        }
+    handleContactPick() {
+        this.close({
+            'update' : {
+                id: this.recordId,
+                source: this.selectedContactId,
+                target: ''
+            }
+        });
+    }
 
-        this.close(newLink);
+    handleToggleContactMode() {
+        this.contactView = !this.contactView;
+        this.freeInputValue = null;
+    }
+
+    get editContact() {
+        return this.typeOfNode === 'contact';
+    }
+
+    get editPlaceholder() {
+        return this.typeOfNode === 'placeholder';
     }
 }
