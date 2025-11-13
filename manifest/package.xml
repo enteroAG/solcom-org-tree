@@ -1,36 +1,32 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
-        <members>*</members>
+        <members>OrgChartController</members>
+        <members>OrgChartControllerTest</members>
         <name>ApexClass</name>
     </types>
     <types>
-        <members>*</members>
-        <name>ApexComponent</name>
-    </types>
-    <types>
-        <members>*</members>
-        <name>ApexPage</name>
-    </types>
-    <types>
-        <members>*</members>
-        <name>ApexTestSuite</name>
-    </types>
-    <types>
-        <members>*</members>
-        <name>ApexTrigger</name>
-    </types>
-    <types>
-        <members>*</members>
-        <name>AuraDefinitionBundle</name>
-    </types>
-    <types>
-        <members>*</members>
+        <members>OrgChartContainer</members>
+        <members>OrgChartEditModal</members>
+        <members>OrgChartAddModal</members>
+        <members>OrgChartConfirmPrompt</members>
         <name>LightningComponentBundle</name>
     </types>
     <types>
-        <members>*</members>
+        <members>cytoscapeComplete</members>
         <name>StaticResource</name>
+    </types>
+    <types>
+        <members>OrgChartLinker__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>OrgChartLinker__c.Account__c</members>
+        <members>OrgChartLinker__c.Source__c</members>
+        <members>OrgChartLinker__c.Target__c</members>
+        <members>OrgChartLinker__c.Source_Text__c</members>
+        <members>OrgChartLinker__c.Target_Text__c</members>
+        <name>CustomField</name>
     </types>
     <version>64.0</version>
 </Package>
