@@ -6,6 +6,8 @@ import { deleteRecord, createRecord } from 'lightning/uiRecordApi';
 import getOrgChartData from '@salesforce/apex/OrgChartController.getOrgChartData';
 
 import cytoscapeComplete from '@salesforce/resourceUrl/cytoscapeComplete';
+
+import AddModal from 'c/orgChartAddModal';
 import EditModal from 'c/orgChartEditModal';
 import ConfirmPrompt from 'c/orgChartConfirmPrompt';
 
@@ -27,7 +29,6 @@ export default class OrgTreeContainer extends LightningElement {
     NEAR_PX = 50;
     NEAR2 = this.NEAR_PX * this.NEAR_PX;
 
-    //Listener Handles
     _htmlRaf = 0;
     _scrollRaf = 0;
     _onScroll = null;
@@ -40,7 +41,7 @@ export default class OrgTreeContainer extends LightningElement {
 
         const { data, error } = result || {};
         if (data) {
-            this.debug('[CYTOSCAPE]: Data retrieved', /* data */);
+            this.debug('[CYTOSCAPE]: Data retrieved', data);
             this.cyData = this.generateCyData(data);
             this.initializeCytoscape();
         } else if (error) {
@@ -48,9 +49,7 @@ export default class OrgTreeContainer extends LightningElement {
         }
     }
 
-    /* Lifecycle */
     disconnectedCallback() {
-        // Scroll-Listener aufräumen
         if (this._scrollTarget && this._onScroll) {
             if (this._scrollTarget === window) {
                 window.removeEventListener('scroll', this._onScroll);
@@ -316,10 +315,19 @@ export default class OrgTreeContainer extends LightningElement {
         if (result === 'success') {
             this.refreshCyData();
         } else if (result && typeof result === 'object') {
-            // Edge aus Modal?
             this.handleAddEdge(result);
         }
     }
+
+    async handleAddNode() {
+        const result = await AddModal.open({
+            size: 'small'
+        });
+       
+        if (result && typeof result === 'object') {
+            this.handleAddEdge(result);
+        }
+    } 
 
     /* Helpers */
     dist2(a, b) {

@@ -59,6 +59,8 @@ public class OrgChartController {
             }
         }
         
+        nodes = removeEmptyNodes(nodes);
+
         List<CytoscapeNode> sanitizedNodes = new List<CytoscapeNode>();
         for (CytoscapeNode node : nodes) {
             Map<String, Object> sfdata = node.sfdata;
@@ -118,9 +120,20 @@ public class OrgChartController {
         
         return node;
     }
+
+    private static List<CytoscapeNode> removeEmptyNodes(List<CytoscapeNode> nodes) {
+        List<CytoscapeNode> sanitizedNodes = new List<CytoscapeNode>();
+        
+        for (CytoscapeNode node : nodes) {
+            if (node.label != null) {
+                sanitizedNodes.add(node);
+            }
+        }
+        
+        return sanitizedNodes;
+    }
     
     private static Contact findContactById(String contactId, List<Contact> contacts) {
-
         if (contactId == null || !isSalesforceId(contactId)) {
             return null;
         }

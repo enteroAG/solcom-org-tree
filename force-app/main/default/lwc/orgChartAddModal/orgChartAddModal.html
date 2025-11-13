@@ -1,0 +1,12 @@
+<template>
+    <lightning-modal-header label="Add new node"></lightning-modal-header>
+
+    <lightning-modal-body>
+        <lightning-input label="Node Title" value={freeInputValue} type="text" data-id="freeInput"
+            onchange={handleFreeInputChange}></lightning-input>
+    </lightning-modal-body>
+
+    <lightning-modal-footer>
+        <lightning-button disabled={isLoading} onclick={handleSubmit} variant="brand" type="submit" label="Save"></lightning-button>
+    </lightning-modal-footer>
+</template>
