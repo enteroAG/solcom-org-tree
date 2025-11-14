@@ -333,6 +333,13 @@ export default class OrgTreeContainer extends LightningElement {
         }
     }
 
+    handleDeleteEdge(edgeId) {
+        const linkId = this.wiredResult?.data?.find((e) => e.label === edgeId)?.linkId;
+        this.deleteEdge(linkId)
+            .then(() => this.refreshCyData())
+            .catch((error) => console.error('[CYTOSCAPE]: delete edge error', error));
+    }
+
     async handleNodeClick(node) {
         const typeOfNode = this.isSalesforceId(node.id) ? 'contact' : 'placeholder';
 
@@ -352,6 +359,8 @@ export default class OrgTreeContainer extends LightningElement {
                 this.handleUpdateEdge(result.update);
             } else if (result.add) {
                 this.handleAddEdge(result.add);
+            } else if (result.delete) {
+                this.handleDeleteEdge(result.delete.id);
             }
         }
     }

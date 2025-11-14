@@ -87,6 +87,14 @@ export default class OrgChartEditModal extends LightningModal {
         });
     }
 
+    handleDelete() {
+        this.close({
+            'delete' : {
+                id: this.recordId
+            }
+        });
+    }
+
     handleToggleContactMode() {
         this.contactView = !this.contactView;
         this.freeInputValue = null;
