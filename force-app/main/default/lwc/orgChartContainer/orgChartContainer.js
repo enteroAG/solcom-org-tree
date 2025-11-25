@@ -343,11 +343,14 @@ export default class OrgTreeContainer extends LightningElement {
     async handleNodeClick(node) {
         const typeOfNode = this.isSalesforceId(node.id) ? 'contact' : 'placeholder';
 
+        this.debug('[CYTOSCAPE]: Node clicked', node, typeOfNode);
+
         const result = await EditModal.open({
             size: 'small',
             objectApiName: 'Contact',
             recordId: node.id,
             linkId: node.linkId,
+            accountId: this.recordId,
             label: node.label,
             typeOfNode: typeOfNode
         });

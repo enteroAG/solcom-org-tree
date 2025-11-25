@@ -5,7 +5,7 @@
     <template lwc:if={editPlaceholder}>
         <lightning-modal-body>
             <lightning-record-picker label="Replace Placeholder with" placeholder="Search Contacts..." data-id="contactNodePicker"
-                onchange={handleContactChange} object-api-name="Contact">
+                onchange={handleContactChange} filter={contactFilterAccount} object-api-name="Contact">
             </lightning-record-picker>
         </lightning-modal-body>
 

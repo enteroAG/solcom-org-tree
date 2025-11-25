@@ -29,7 +29,18 @@ export default class OrgChartEditModal extends LightningModal {
         };
     }
 
+    get contactFilterAccount() {
+        console.log('contactFilterAccount', this.accountId);
+        if (!this.accountId) return undefined;
+        return {
+            criteria: [
+                { fieldPath: 'AccountId', operator: 'eq', value: this.accountId }
+            ]
+        };
+    }
+
     @api recordId;
+    @api accountId;
     @api objectApiName;
     @api typeOfNode;
 
