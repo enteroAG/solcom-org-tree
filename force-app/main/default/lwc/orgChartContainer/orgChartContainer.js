@@ -21,7 +21,7 @@ export default class OrgTreeContainer extends LightningElement {
     cytoscapeLoaded = false;
     cytoscapeRendered = false;
 
-    debugMode = true;
+    debugMode = false;
     isLoading = false;
 
     wiredResult;
@@ -342,8 +342,6 @@ export default class OrgTreeContainer extends LightningElement {
 
     async handleNodeClick(node) {
         const typeOfNode = this.isSalesforceId(node.id) ? 'contact' : 'placeholder';
-
-        this.debug('[CYTOSCAPE]: Node clicked', node, typeOfNode);
 
         const result = await EditModal.open({
             size: 'small',

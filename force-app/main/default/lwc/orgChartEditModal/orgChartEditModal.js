@@ -30,7 +30,6 @@ export default class OrgChartEditModal extends LightningModal {
     }
 
     get contactFilterAccount() {
-        console.log('contactFilterAccount', this.accountId);
         if (!this.accountId) return undefined;
         return {
             criteria: [
