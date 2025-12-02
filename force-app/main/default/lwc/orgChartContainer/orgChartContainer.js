@@ -3,7 +3,10 @@ import { loadScript } from 'lightning/platformResourceLoader';
 import { style, layout, htmlConfig } from './cytoscapeConfig';
 import { refreshApex } from '@salesforce/apex';
 import { deleteRecord, createRecord, updateRecord } from 'lightning/uiRecordApi';
-import getOrgChartData from '@salesforce/apex/OrgChartController.getOrgChartData';
+
+import getChartData from '@salesforce/apex/OrgChartController.getChartData';
+import createMissingNodes from '@salesforce/apex/OrgChartController.createMissingNodes';
+import deleteAllNodes from '@salesforce/apex/OrgChartController.deleteAllNodes';
 
 import cytoscapeComplete from '@salesforce/resourceUrl/cytoscapeComplete';
 
@@ -21,7 +24,7 @@ export default class OrgTreeContainer extends LightningElement {
     cytoscapeLoaded = false;
     cytoscapeRendered = false;
 
-    debugMode = false;
+    debugMode = true;
     isLoading = false;
 
     wiredResult;
@@ -35,7 +38,7 @@ export default class OrgTreeContainer extends LightningElement {
     _updateHtml = null;
     _scrollTarget = null;
 
-    @wire(getOrgChartData, { recordId: '$recordId', orgChartId: 'default' })
+    @wire(getChartData, { accountId: '$recordId' })
     wiredResult(result) {
         this.wiredResult = result;
 
@@ -43,7 +46,7 @@ export default class OrgTreeContainer extends LightningElement {
         if (data) {
             this.debug('[CYTOSCAPE]: Data retrieved', data);
 
-            this.cyData = this.generateCyData(data);
+            this.cyData = this.generateCyData(data.nodes, data.edges);
             this.debug('[CYTOSCAPE]: Graph data generated', this.cyData);
 
             this.initializeCytoscape();
@@ -200,51 +203,37 @@ export default class OrgTreeContainer extends LightningElement {
     }
 
     /* Data */
-    generateCyData(data) {
+   generateCyData(nodeData, edgeData) {
         const nodes = [];
         const edges = [];
-        const links = {};
-        const added = new Set();
 
-        data.forEach((row) => {
-            const node = row;
-            if (!added.has(node.id)) {
-                nodes.push({
-                    data: {
-                        id: node.id,
-                        label: node.label,
-                        backgroundColor: node.backgroundColor,
-                        sfdata: node.sfdata,
-                        type: 'node',
-                        html: true,
-                        htmlW: 210,
-                        htmlH: 86
-                    }
-                });
-                added.add(node.id);
-            }
-            if (node.linkId) {
-                if (!links[node.linkId]) links[node.linkId] = [];
-                links[node.linkId].push(node.id);
-            }
+        nodeData.forEach((node) => {
+            nodes.push({
+                data: {
+                    id: node.id,
+                    label: node.label,
+                    backgroundColor: node.backgroundColor,
+                    sfdata: node.sfdata,
+                    type: 'node',
+                    html: true,
+                    htmlW: 210,
+                    htmlH: 86,
+                    edgeId: node.edgeId
+                }
+            });
         });
 
-        Object.entries(links).forEach(([linkId, nodeIds]) => {
-            const ids = [...nodeIds];
-            if (ids.length < 2) return;
-            for (let i = 0; i < ids.length - 1; i++) {
-                edges.push({
-                    data: {
-                        id: linkId,
-                        source: ids[i],
-                        target: ids[i + 1],
-                        type: 'edge'
-                    }
-                });
-            }
+        edgeData.forEach((edge) => {
+            edges.push({
+                data: {
+                    id: edge.id,
+                    source: edge.source,
+                    target: edge.target,
+                    type: 'edge',
+                    label: edge.label
+                }
+            });
         });
-
-        this.debug('[CYTOSCAPE]: Graph data generated');
         return [...nodes, ...edges];
     }
 
@@ -256,7 +245,7 @@ export default class OrgTreeContainer extends LightningElement {
             const data = this.wiredResult?.data;
             if (!data) return;
 
-            this.cyData = this.generateCyData(data);
+            this.cyData = this.generateCyData(data.nodes, data.edges);
             if (!Array.isArray(this.cyData)) {
                 const { nodes = [], edges = [] } = this.cyData || {};
                 this.cyData = [...nodes, ...edges];
@@ -285,43 +274,40 @@ export default class OrgTreeContainer extends LightningElement {
 
     /* CRUD Handlers */
     handleAddEdge(edge) {
-        const fields = {};
-        fields['Source_Text__c'] = !this.isSalesforceId(edge.source) ? edge.source : '';
-        fields['Source__c'] = !this.isSalesforceId(edge.source) ? null : edge.source;
-        fields['Target_Text__c'] = !this.isSalesforceId(edge.target) ? edge.target : '';
-        fields['Target__c'] = !this.isSalesforceId(edge.target) ? null : edge.target;
-        fields['Account__c'] = this.recordId;
+        const fields = {
+            'Source__c': edge.source,
+            'Target__c': edge.target
+        };
 
-        this.createEdge({ apiName: 'OrgChartLinker__c', fields })
+        this.createEdge({ apiName: 'Edge__c', fields })
             .then(() => this.refreshCyData())
-            .catch((error) => console.error('[CYTOSCAPE]: create edge error', error));
+            .catch((error) => console.error('[CRUD]: create edge error', error));
     }
 
     handleUpdateEdge(edge) {
-        const fields = {};
-        fields['Id'] = this.wiredResult?.data?.find((e) => e.label === edge.id)?.linkId
-        fields['Source_Text__c'] = !this.isSalesforceId(edge.source) ? edge.source : '';
-        fields['Source__c'] = !this.isSalesforceId(edge.source) ? null : edge.source;
-        fields['Target_Text__c'] = !this.isSalesforceId(edge.target) ? edge.target : '';
-        fields['Target__c'] = this.isSalesforceId(edge.target) ? edge.target : null;
-        fields['Account__c'] = this.recordId;
-
-        this.debug('[CYTOSCAPE]: Update edge', fields);
+        const fields = {
+            'Id': edge.id, 
+            'Source__c': edge.source,
+            'Target__c': edge.target
+        };
 
         this.updateEdge({ fields })
             .then(() => this.refreshCyData())
-            .catch((error) => console.log('[CYTOSCAPE]: update edge error', error.message));
+            .catch((error) => console.log('[CRUD]: update edge error', error.message));
+    }
+
+    handleDeleteEdge(edgeId) {
+        this.deleteEdge(edgeId)
+            .then(() => this.refreshCyData())
+            .catch((error) => console.error('[CRUD]: delete edge error', error));
     }
 
     async handleAddNode() {
-        const result = await AddModal.open({
-            size: 'small'
-        });
-       
+        const result = await AddModal.open({ size: 'small' });
         if (result && typeof result === 'object') {
             this.handleAddEdge(result);
         }
-    } 
+    }
 
     async handleEdgeClick(edgeId) {
         const result = await ConfirmPrompt.open({
@@ -333,13 +319,6 @@ export default class OrgTreeContainer extends LightningElement {
         }
     }
 
-    handleDeleteEdge(edgeId) {
-        const linkId = this.wiredResult?.data?.find((e) => e.label === edgeId)?.linkId;
-        this.deleteEdge(linkId)
-            .then(() => this.refreshCyData())
-            .catch((error) => console.error('[CYTOSCAPE]: delete edge error', error));
-    }
-
     async handleNodeClick(node) {
         const typeOfNode = this.isSalesforceId(node.id) ? 'contact' : 'placeholder';
 
@@ -347,7 +326,7 @@ export default class OrgTreeContainer extends LightningElement {
             size: 'small',
             objectApiName: 'Contact',
             recordId: node.id,
-            linkId: node.linkId,
+            linkId: node.edgeId,
             accountId: this.recordId,
             label: node.label,
             typeOfNode: typeOfNode
@@ -364,6 +343,20 @@ export default class OrgTreeContainer extends LightningElement {
                 this.handleDeleteEdge(result.delete.id);
             }
         }
+    }
+
+    handleCreateNodes() {
+        createMissingNodes({ accountId : this.recordId }).then(result => {  
+            this.debug('[CRUD]: create nodes count', result);
+            this.refreshCyData()
+        });
+    }
+
+    handleDeleteNodes() {
+        deleteAllNodes({ accountId : this.recordId }).then(result => {
+            this.debug('[CRUD]: delete nodes count', result);
+            this.refreshCyData();
+        });
     }
 
     /* Helpers */

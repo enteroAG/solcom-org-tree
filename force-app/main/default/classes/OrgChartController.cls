@@ -1,4 +1,4 @@
-public class OrgChartController {
+public with sharing class OrgChartController {
     
     public class CustomOrgChartException extends Exception {}
     
@@ -7,156 +7,218 @@ public class OrgChartController {
         '1' => '#87B433',
         '2' => '#42A12E',
         '3' => '#EFBF04',
-        '4' => 'rgba(135, 140, 145, 1)'
+        '4' => 'rgba(135, 140, 145, 1)' 
     };
     
-    private static final String ORG_CHART_LINKER_OBJECT = 'OrgChartLinker__c';
-    private static final String CONTACT_OBJECT = 'Contact';
+    private static final String EDGE_OBJECT = 'Edge__c';
+    private static final String NODE_OBJECT = 'Node__c';
     
     private static final List<String> CONTACT_FIELDS = new List<String>{
         'Id', 'Name', 'Department', 'SC_APPrio__c', 'ReportsToId', 'ReportsTo.Name', 'SC_Function__c'
     };
-    private static final List<String> LINKER_FIELDS = new List<String>{
-        'Id', 'Source__c', 'Target__c', 'Source_Text__c', 'Target_Text__c', 'Account__c'
+    
+    private static final List<String> NODE_FIELDS = new List<String>{
+        'Id', 'Label__c', 'RelatedToAccount__c', 'Record__c' // Record__c hält die Contact Id
     };
-    
-    @AuraEnabled(cacheable=true)
-    public static List<CytoscapeNode> getOrgChartData(String recordId, String orgChartId) {
-        if (String.isBlank(recordId) || String.isBlank(orgChartId)) {
-            throw new CustomOrgChartException('Record ID and Org Chart ID must be provided.');
-        }
-        
-        List<Contact> contacts = Database.query(
-            'SELECT ' + String.join(CONTACT_FIELDS, ', ') +
-            ' FROM Contact WHERE AccountId = :recordId'
-            );
-        
-        List<OrgChartLinker__c> linkers = Database.query(
-            'SELECT ' + String.join(LINKER_FIELDS, ', ') +
-            ' FROM ' + ORG_CHART_LINKER_OBJECT +
-            ' WHERE Account__c = :recordId'
-            );
-        
-        if (contacts.isEmpty() && linkers.isEmpty()) {
-            throw new CustomOrgChartException('No contacts or linkers found for the provided record ID.');
-        }
-        
-        List<CytoscapeNode> nodes = new List<CytoscapeNode>();
-        
-        for (OrgChartLinker__c linker : linkers) {
-            List<CytoscapeNode> linkerNodes = createNodesFromLinkers(linker, contacts);
-            
-            if (!linkerNodes.isEmpty()) {
-                nodes.addAll(linkerNodes);
-            }
-        }
-        
-        for (Contact contact : contacts) {
-            CytoscapeNode node = createNodeFromContact(contact);
-            
-            if (node != null) {
-                nodes.add(node);
-            }
-        }
-        
-        nodes = removeEmptyNodes(nodes);
 
-        List<CytoscapeNode> sanitizedNodes = new List<CytoscapeNode>();
-        for (CytoscapeNode node : nodes) {
-            Map<String, Object> sfdata = node.sfdata;
+    private static final List<String> EDGE_FIELDS = new List<String>{
+        'Id', 'Source__c', 'Target__c', 'Name' 
+    };
 
-            if (node.linkId != null || (sfdata.get('SC_APPrio__c') == '1' || sfdata.get('SC_APPrio__c') == '2' || sfdata.get('SC_APPrio__c') == '3')) {
-                sanitizedNodes.add(node);
-            } 
-        }
-        return sanitizedNodes;
-    }
-    
-    private static List<CytoscapeNode> createNodesFromLinkers(OrgChartLinker__c linker, List<Contact> contacts) {
-        List<String> entities = new List<String>{ 'Source', 'Target' };
-        List<CytoscapeNode> nodes = new List<CytoscapeNode>();
-        
-        for (String entity : entities) {
-            CytoscapeNode node = new CytoscapeNode();
-            
-            Contact entityRecord = findContactById((String) linker.get(entity + '__c'), contacts);
-            
-            node.id = entityRecord != null ? (String) linker.get(entity + '__c') : (String )linker.get(entity + '_Text__c');
-            node.label = entityRecord != null ? entityRecord.Name : (String) linker.get(entity + '_Text__c');
-            node.backgroundColor = entityRecord != null ? (String) PRIORITY_COLORS.get(entityRecord.SC_APPrio__c) : (String) PRIORITY_COLORS.get('4') ;
-            node.linkId = linker.Id;
-            
-            node.sfdata = new Map<String, Object>{
-                'Id' => entityRecord != null ? (String) entityRecord.Id : UUID.randomUUID().toString(),
-                'Name' => entityRecord != null ? entityRecord.Name : (String) linker.get(entity + '_Text__c'),
-                'Department' => entityRecord != null ? entityRecord.Department : null,
-                'SC_APPrio__c' => entityRecord != null ? entityRecord.SC_APPrio__c : null,
-                'SC_Function__c' => entityRecord != null ? entityRecord.SC_Function__c : null,
-                'ReportsToId' => entityRecord != null ? entityRecord.ReportsToId : null,
-                'ReportsToName' => entityRecord != null ? entityRecord.ReportsTo?.Name : null
-            };
-            
-            nodes.add(node);
-        }
-        
-        return nodes;
-    }
-    
-    private static CytoscapeNode createNodeFromContact(Contact contact) {
-        CytoscapeNode node = new CytoscapeNode();
-        
-        node.id = contact.Id;
-        node.label = contact.Name;
-        node.backgroundColor = PRIORITY_COLORS.get(contact.SC_APPrio__c);
-        
-        node.sfdata = new Map<String, Object>{
-            'Id' => contact.Id,
-            'Name' => contact.Name,
-            'Department' => contact.Department,
-            'SC_APPrio__c' => contact.SC_APPrio__c,
-            'ReportsToId' => contact.ReportsToId,
-            'ReportsToName' => contact.ReportsTo?.Name
-        };
-        
-        return node;
-    }
-
-    private static List<CytoscapeNode> removeEmptyNodes(List<CytoscapeNode> nodes) {
-        List<CytoscapeNode> sanitizedNodes = new List<CytoscapeNode>();
-        
-        for (CytoscapeNode node : nodes) {
-            if (node.label != null) {
-                sanitizedNodes.add(node);
-            }
-        }
-        
-        return sanitizedNodes;
-    }
-    
-    private static Contact findContactById(String contactId, List<Contact> contacts) {
-        if (contactId == null || !isSalesforceId(contactId)) {
-            return null;
-        }
-        
-        for (Contact contact : contacts) {
-            if (contact.Id == contactId) {
-                return contact;
-            }
-        }
-        return null;
-    }
-    
-    private static Boolean isSalesforceId(String candidate) {
-        return candidate != null &&
-            (candidate.length() == 15 || candidate.length() == 18) &&
-            Pattern.matches('^[a-zA-Z0-9]+$', candidate);
-    }
-    
     public class CytoscapeNode {
         @AuraEnabled public String id;
         @AuraEnabled public String label;
         @AuraEnabled public String backgroundColor;
-        @AuraEnabled public String linkId;
+        @AuraEnabled public String edgeId;
         @AuraEnabled public Map<String, Object> sfdata;
+    }
+
+    public class GraphDataWrapper {
+        @AuraEnabled public List<CytoscapeNode> nodes;
+        @AuraEnabled public List<CytoscapeEdge> edges;
+    }
+
+    public class CytoscapeEdge { 
+        @AuraEnabled public String id;
+        @AuraEnabled public String source;
+        @AuraEnabled public String target;
+        @AuraEnabled public String label; 
+    }
+    
+    @AuraEnabled
+    public static Integer createMissingNodes(Id accountId) {
+        if (accountId == null) {
+            throw new CustomOrgChartException('Account ID must be provided.');
+        }
+        
+        List<Contact> allContacts = [
+            SELECT Id, Name FROM Contact 
+            WHERE AccountId = :accountId
+        ];
+        
+        Set<Id> existingNodeContactIds = new Set<Id>();
+        for (Node__c node : [
+            SELECT Record__c FROM Node__c 
+            WHERE RelatedToAccount__c = :accountId AND Record__c != NULL
+        ]) {
+            existingNodeContactIds.add(node.Record__c);
+        }
+
+        List<Node__c> newNodesToInsert = new List<Node__c>();
+        for (Contact contact : allContacts) {
+            if (!existingNodeContactIds.contains(contact.Id)) {
+                newNodesToInsert.add(new Node__c(
+                    Label__c = contact.Name,
+                    RelatedToAccount__c = accountId,
+                    Record__c = contact.Id 
+                ));
+            }
+        }
+
+        if (!newNodesToInsert.isEmpty()) {
+            Database.insert(newNodesToInsert);
+        }
+
+        return newNodesToInsert.size();
+    }
+
+    @AuraEnabled
+    public static Integer deleteAllNodes(Id accountId) {
+        List<Node__c> nodesToDelete = [
+            SELECT Id FROM Node__c 
+            WHERE RelatedToAccount__c = :accountId
+        ];
+
+        List<Edge__c> edgesToDelete = [
+            SELECT Id FROM Edge__c 
+            WHERE Source__c IN :nodesToDelete OR Target__c IN :nodesToDelete
+        ];
+
+        delete edgesToDelete;
+        delete nodesToDelete;
+
+        return nodesToDelete.size() + edgesToDelete.size();
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static GraphDataWrapper getChartData(Id accountId) {
+        if (accountId == null) {
+            return null;
+        }
+        
+        List<Contact> allContacts = Database.query(
+            'SELECT ' + String.join(CONTACT_FIELDS, ', ') +
+            ' FROM Contact WHERE AccountId = :accountId'
+        );
+        Map<Id, Contact> contactMap = new Map<Id, Contact>(allContacts);
+        
+        List<Node__c> allPersistedNodes = Database.query(
+            'SELECT ' + String.join(NODE_FIELDS, ', ') +
+            ' FROM ' + NODE_OBJECT +
+            ' WHERE RelatedToAccount__c = :accountId'
+        );
+
+        Map<Id, CytoscapeNode> nodeMap = new Map<Id, CytoscapeNode>();
+        Set<Id> allNodeIds = new Set<Id>();
+
+        for (Node__c node : allPersistedNodes) {
+            CytoscapeNode cyNode = createNodeFromPersistedNode(node, contactMap);
+            nodeMap.put(node.Id, cyNode);
+            allNodeIds.add(node.Id);
+        }
+
+        List<CytoscapeEdge> edgeList = new List<CytoscapeEdge>();
+        Set<Id> nodesWithEdge = new Set<Id>();
+
+        if (!allNodeIds.isEmpty()) {
+            List<Edge__c> relatedEdges = Database.query(
+                'SELECT ' + String.join(EDGE_FIELDS, ', ') + 
+                ' FROM ' + EDGE_OBJECT +
+                ' WHERE Source__c IN :allNodeIds OR Target__c IN :allNodeIds' 
+            );
+
+            for (Edge__c edge : relatedEdges) {
+                if (nodeMap.containsKey(edge.Source__c) && nodeMap.containsKey(edge.Target__c)) {
+                    CytoscapeEdge cytoscapeEdge = new CytoscapeEdge();
+                    cytoscapeEdge.id = edge.Id;
+                    cytoscapeEdge.source = edge.Source__c;
+                    cytoscapeEdge.target = edge.Target__c;
+                    cytoscapeEdge.label = edge.Name;
+
+                    edgeList.add(cytoscapeEdge);
+
+                    nodesWithEdge.add(edge.Source__c);
+                    nodesWithEdge.add(edge.Target__c);
+                }
+            }
+        }
+        
+        List<CytoscapeNode> filteredNodes = filterAndSanitizeNodes(nodeMap.values(), nodesWithEdge);
+
+        GraphDataWrapper wrapper = new GraphDataWrapper();
+        wrapper.nodes = filteredNodes;
+        wrapper.edges = edgeList;
+        
+        return wrapper;
+    }
+
+    private static CytoscapeNode createNodeFromPersistedNode(Node__c node, Map<Id, Contact> contactMap) {
+        CytoscapeNode cyNode = new CytoscapeNode();
+        
+        cyNode.id = node.Id; 
+        cyNode.label = node.Label__c;
+        cyNode.edgeId = null;
+
+        String prio = '4'; 
+        String contactId = node.Record__c;
+        Boolean isContact = contactId != null;
+        
+        if (isContact && contactMap.containsKey(contactId)) {
+            Contact relatedContact = contactMap.get(contactId);
+            prio = relatedContact.SC_APPrio__c;
+            cyNode.label = relatedContact.Name; 
+
+            cyNode.sfdata = new Map<String, Object>{
+                'Id' => node.Id,
+                'Name' => cyNode.label,
+                'IsContact' => true,
+                'ContactId' => contactId,
+                'SC_APPrio__c' => prio,
+                'Department' => relatedContact.Department,
+                'SC_Function__c' => relatedContact.SC_Function__c,
+                'ReportsToId' => relatedContact.ReportsToId,
+                'ReportsToName' => relatedContact.ReportsTo?.Name
+            };
+        } else {
+            cyNode.sfdata = new Map<String, Object>{
+                'Id' => node.Id,
+                'Name' => node.Label__c,
+                'IsContact' => false,
+                'ContactId' => null,
+                'SC_APPrio__c' => prio
+            };
+        }
+        
+        cyNode.backgroundColor = PRIORITY_COLORS.get(prio); 
+        
+        return cyNode;
+    }
+
+    private static List<CytoscapeNode> filterAndSanitizeNodes(List<CytoscapeNode> nodes, Set<Id> nodesWithEdge) {
+        List<CytoscapeNode> sanitizedNodes = new List<CytoscapeNode>();
+        
+        for (CytoscapeNode node : nodes) {
+            if (String.isBlank(node.label)) continue;
+
+            String prio = (String)node.sfdata.get('SC_APPrio__c');
+            Boolean hasRequiredPrio = prio == '1' || prio == '2' || prio == '3';
+            
+            Boolean isLinked = nodesWithEdge.contains(node.id); 
+
+            if (isLinked || hasRequiredPrio) {
+                sanitizedNodes.add(node);
+            } 
+        }
+        return sanitizedNodes;
     }
 }

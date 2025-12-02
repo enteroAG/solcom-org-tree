@@ -17,8 +17,22 @@
                 <lightning-button 
                     variant="brand" 
                     label="Add Node" 
+                    class="slds-m-right_medium"
                     onclick={handleAddNode}>
                 </lightning-button>
+                <lightning-button 
+                    variant="success" 
+                    label="Create Nodes From Contact" 
+                    class="slds-m-right_medium"
+                    onclick={handleCreateNodes}>
+                </lightning-button>
+                <template if:true={debugMode}>
+                    <lightning-button 
+                        variant="destructive" 
+                        label="Delete Nodes" 
+                        onclick={handleDeleteNodes}>
+                    </lightning-button>
+                </template>
             </div>
         </div>
     </lightning-card>
