@@ -18,7 +18,7 @@ public with sharing class OrgChartController {
     };
     
     private static final List<String> NODE_FIELDS = new List<String>{
-        'Id', 'Label__c', 'RelatedToAccount__c', 'Record__c' // Record__c hält die Contact Id
+        'Id', 'Label__c', 'RelatedToAccount__c', 'Record__c'
     };
 
     private static final List<String> EDGE_FIELDS = new List<String>{
