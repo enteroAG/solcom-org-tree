@@ -21,15 +21,6 @@ export default class OrgChartEditModal extends LightningModal {
     ]
 
     get contactFilter() {
-        if (!this.recordId) return undefined;
-        return {
-            criteria: [
-                { fieldPath: 'Id', operator: 'nin', value: [this.recordId] }
-            ]
-        };
-    }
-
-    get contactFilterAccount() {
         if (!this.accountId) return undefined;
         return {
             criteria: [
@@ -38,83 +29,45 @@ export default class OrgChartEditModal extends LightningModal {
         };
     }
 
+    @api nodeId;
     @api recordId;
     @api accountId;
     @api objectApiName;
-    @api typeOfNode;
 
     contactView = true;
-    isFreeInput;
+    selectedContactId = {};
 
-    freeInputValue = '';
+    handleSave(event) {
+        this.isLoading = true;
+
+        if (this.editContact) {
+            event.preventDefault();
+            const fields = event.detail.fields;
+            this.template.querySelector('lightning-record-edit-form').submit(fields);
+        } else {
+            this.close({ 'method' : 'replace', 'payload' : this.selectedContactId });
+        }
+    }
+
+    handleDelete() {
+        this.close({ 'method' : 'delete', 'payload' : this.nodeId });
+    }
 
     handleSuccess() {
         this.isLoading = false;
-        this.close('success');
+        this.close({ 'method' : 'save', 'status' : 'success' });
     }
 
-    handleError(event) {
+    handleError() {
         this.isLoading = false;
-        this.close('error');
-    }
-
-    handleSubmit(event) {
-        event.preventDefault();
-        this.isLoading = true;
-        const fields = event.detail.fields;
-        this.template.querySelector('lightning-record-edit-form').submit(fields);
-    }
-
-    handleChangeInputType(event) {
-        this.isFreeInput = event.target.checked;
-        this.selectedContactId = null;
-    }
-
-    handleFreeInputChange(event) {
-        this.freeInputValue = event.target.value;
+        this.close({ 'method' : 'save', 'status' : 'error' });
     }
 
     handleContactChange(event) {
         this.selectedContactId = event.detail.recordId;
     }
 
-    handleSubsidiarySubmit() {
-        this.close({
-            'add' : {
-                source: this.recordId,
-                target: this.freeInputValue || this.selectedContactId
-            }
-        });
-    }
-
-    handleContactPick() {
-        this.close({
-            'update' : {
-                id: this.recordId,
-                source: this.selectedContactId,
-                target: ''
-            }
-        });
-    }
-
-    handleDelete() {
-        this.close({
-            'delete' : {
-                id: this.recordId
-            }
-        });
-    }
-
-    handleToggleContactMode() {
-        this.contactView = !this.contactView;
-        this.freeInputValue = null;
-    }
-
     get editContact() {
-        return this.typeOfNode === 'contact';
-    }
-
-    get editPlaceholder() {
-        return this.typeOfNode === 'placeholder';
+        return this.recordId;
     }
 }

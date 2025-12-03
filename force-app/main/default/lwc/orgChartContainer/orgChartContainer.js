@@ -126,6 +126,14 @@ export default class OrgTreeContainer extends LightningElement {
             scrollTarget.addEventListener('scroll', this._onScroll, { passive: true });
         }
 
+        this.registerCytoListeners();
+
+        this.cytoscapeRendered = true;
+        this.debug('[CYTOSCAPE]: Rendered');
+    }
+
+    /* Listeners */
+    registerCytoListeners() {
         this.cyto.on('click', 'node', (evt) => {
             const node = evt.target;
             this.debug('[CYTOSCAPE]: Node clicked', node.data());
@@ -158,7 +166,7 @@ export default class OrgTreeContainer extends LightningElement {
                     if (n === draggedNode) return;
                     const hit = this.dist2(dp, n.position()) < this.NEAR2;
                     if (!!n.data('hl') !== hit) {
-                        n.data('hl', hit ? 1 : 0); 
+                        n.data('hl', hit ? 1 : 0);
                         anyChange = true;
                     }
                 });
@@ -195,13 +203,10 @@ export default class OrgTreeContainer extends LightningElement {
             draggedNode = null;
             this.updateHtml();
         });
-
-        this.cytoscapeRendered = true;
-        this.debug('[CYTOSCAPE]: Rendered');
     }
 
     /* Data */
-   generateCyData(nodeData, edgeData) {
+    generateCyData(nodeData, edgeData) {
         const nodes = [];
         const edges = [];
 
@@ -271,104 +276,145 @@ export default class OrgTreeContainer extends LightningElement {
     }
 
     /* CRUD Handlers */
+    /* UI Event and Direct Handlers (Level 1) */
     handleAddEdge(edge) {
         const fields = {
             'Source__c': edge.source,
             'Target__c': edge.target
         };
-
-        this.createEdge({ apiName: 'Edge__c', fields })
-            .then(() => this.refreshCyData())
-            .catch((error) => console.error('[CRUD]: create edge error', error));
+        this.createEdgeRecordAction(fields);
     }
 
     handleUpdateEdge(edge) {
         const fields = {
-            'Id': edge.id, 
+            'Id': edge.id,
             'Source__c': edge.source,
             'Target__c': edge.target
         };
-
-        this.updateEdge({ fields })
-            .then(() => this.refreshCyData())
-            .catch((error) => console.log('[CRUD]: update edge error', error.message));
+        this.updateEdgeRecordAction(fields);
     }
 
     handleDeleteEdge(edgeId) {
-        this.deleteEdge(edgeId)
-            .then(() => this.refreshCyData())
-            .catch((error) => console.error('[CRUD]: delete edge error', error));
+        this.deleteEdgeRecordAction(edgeId);
     }
 
-    async handleAddNode() {
-        const result = await AddModal.open({ size: 'small' });
-
-        const fields = {
-            'RelatedToAccount__c': this.recordId,
-            'Label__c': result
-        };
-
-        this.createNode({ apiName: 'Node__c', fields })
-            .then(() => this.refreshCyData())
-            .catch((error) => console.error('[CRUD]: create node error', error));
+    handleEdgeClick(edgeId) {
+        this.handleOpenConfirmPrompt(edgeId);
     }
 
-    async handleEdgeClick(edgeId) {
-        const result = await ConfirmPrompt.open({
-            size: 'small',
-            message: 'Are you sure you want to delete this link?'
-        });
-        if (result === 'confirm') {
-            this.deleteEdge(edgeId).then(() => this.refreshCyData());
-        }
+    handleNodeClick(node) {
+        this.handleOpenEditNodeModal(node);
     }
 
-    async handleNodeClick(node) {
-        const typeOfNode = this.isSalesforceId(node.id) ? 'contact' : 'placeholder';
-
-        const result = await EditModal.open({
-            size: 'small',
-            objectApiName: 'Contact',
-            recordId: node.id,
-            linkId: node.edgeId,
-            accountId: this.recordId,
-            label: node.label,
-            typeOfNode: typeOfNode
-        });
-
-        if (result === 'success') {
-            this.refreshCyData();
-        } else if (result && typeof result === 'object') {
-            if (result.update) {
-                this.handleUpdateEdge(result.update);
-            } else if (result.add) {
-                this.handleAddEdge(result.add);
-            } else if (result.delete) {
-                this.handleDeleteEdge(result.delete.id);
-            }
-        }
+    handleRefreshCanvas() {
+        this.refreshCyData();
     }
 
     handleCreateNodes() {
-        createMissingNodes({ accountId : this.recordId }).then(result => {  
+        createMissingNodes({ accountId: this.recordId }).then(result => {
             this.debug('[CRUD]: create nodes count', result);
             this.refreshCyData()
         });
     }
 
     handleDeleteNodes() {
-        deleteAllNodes({ accountId : this.recordId }).then(result => {
+        deleteAllNodes({ accountId: this.recordId }).then(result => {
             this.debug('[CRUD]: delete nodes count', result);
             this.refreshCyData();
         });
     }
 
-    /* Helpers */
+    /* UI Flow Handlers (Level 2) */
+    async handleOpenAddNodeModal() {
+        const result = await AddModal.open({ size: 'small' });
 
+        if (result) {
+            const fields = {
+                'RelatedToAccount__c': this.recordId,
+                'Label__c': result
+            };
+            this.createNodeRecordAction(fields);
+        }
+    }
+
+    async handleOpenEditNodeModal(node) {
+        const result = await EditModal.open({
+            size: 'small',
+            objectApiName: 'Contact',
+            nodeId: node.id,
+            recordId: node.sfdata?.ContactId,
+            accountId: this.recordId,
+            label: node.label,
+        });
+
+        switch (result.method) {
+            case 'save':
+                if (result.status === 'error') this.debug('[CYTOSCAPE]: error saving node');
+                this.refreshCyData();
+                break;
+            case 'delete':
+                this.deleteNodeRecordAction(result.payload);
+                break;
+            case 'replace':
+                // Logik für 'replace' hier einfügen
+
+
+                break;
+            default:
+                break;
+        }
+    }
+
+    async handleOpenConfirmPrompt(edgeId) {
+        const result = await ConfirmPrompt.open({
+            size: 'small',
+            message: 'Are you sure you want to delete this link?'
+        });
+
+        if (result === 'confirm') {
+            this.deleteEdgeRecordAction(edgeId);
+        }
+    }
+
+    /* Data Actions (Level 3) */
+    createEdgeRecordAction(fields) {
+        this.createEdge({ apiName: 'Edge__c', fields })
+            .then(() => this.refreshCyData())
+            .catch((error) => console.error('[CRUD]: create edge error', error));
+    }
+
+    updateEdgeRecordAction(fields) {
+        this.updateEdge({ fields })
+            .then(() => this.refreshCyData())
+            .catch((error) => console.log('[CRUD]: update edge error', error.message));
+    }
+
+    deleteEdgeRecordAction(edgeId) {
+        this.deleteEdge(edgeId)
+            .then(() => this.refreshCyData())
+            .catch((error) => console.error('[CRUD]: delete edge error', error));
+    }
+
+    createNodeRecordAction(fields) {
+        // ACHTUNG: Ich habe 'node' zu 'fields' korrigiert, basierend auf der Logik im Modal-Handler.
+        this.createNode({ apiName: 'Node__c', fields })
+            .then(() => this.refreshCyData())
+            .catch((error) => console.error('[CRUD]: create node error', error));
+    }
+
+    deleteNodeRecordAction(nodeId) {
+        this.deleteNode(nodeId)
+            .then(() => this.refreshCyData())
+            .catch((error) => console.error('[CRUD]: delete node error', error));
+    }
+
+    /* Helpers */
     async deleteEdge(recordId) { return deleteRecord(recordId); }
     async createEdge(recordInput) { return createRecord(recordInput); }
     async updateEdge(recordInput) { return updateRecord(recordInput); }
     async createNode(recordInput) { return createRecord(recordInput); }
+    async deleteNode(recordId) { return deleteRecord(recordId); }
+
 
     dist2(a, b) {
         const dx = a.x - b.x, dy = a.y - b.y;
@@ -406,11 +452,6 @@ export default class OrgTreeContainer extends LightningElement {
         return window;
     }
 
-    isSalesforceId(id) {
-        const sfIdRegex = /^[a-zA-Z0-9]{15,18}$/;
-        return sfIdRegex.test(id);
-    }
-
     debug(method, obj) {
         if (!this.debugMode) return;
         const cache = new Set();
@@ -434,14 +475,6 @@ export default class OrgTreeContainer extends LightningElement {
             // eslint-disable-next-line no-console
             console.log(method, obj);
         }
-    }
-
-    generateUUID() {
-        const bytes = crypto.getRandomValues(new Uint8Array(16));
-        bytes[6] = (bytes[6] & 0x0f) | 0x40;
-        bytes[8] = (bytes[8] & 0x3f) | 0x80;
-        const hex = [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
-        return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-');
     }
 
     get containerCSS() {
