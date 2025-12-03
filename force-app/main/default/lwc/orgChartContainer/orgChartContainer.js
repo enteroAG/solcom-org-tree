@@ -348,7 +348,7 @@ export default class OrgTreeContainer extends LightningElement {
             label: node.label,
         });
 
-        switch (result.method) {
+        switch (result?.method) {
             case 'save':
                 if (result.status === 'error') this.debug('[CYTOSCAPE]: error saving node');
                 this.refreshCyData();
