@@ -9,11 +9,6 @@ export default class OrgChartAddModal extends LightningModal {
     }
 
     handleSubmit() {
-        const newLink = {
-            source: this.freeInputValue,
-            target: ''
-        }
-
-        this.close(newLink);
+        this.close(this.freeInputValue);
     }
 }

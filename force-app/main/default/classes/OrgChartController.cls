@@ -70,6 +70,7 @@ public with sharing class OrgChartController {
                 newNodesToInsert.add(new Node__c(
                     Label__c = contact.Name,
                     RelatedToAccount__c = accountId,
+                    IsSalesforceRecord__c = true,
                     Record__c = contact.Id 
                 ));
             }
@@ -128,7 +129,6 @@ public with sharing class OrgChartController {
         }
 
         List<CytoscapeEdge> edgeList = new List<CytoscapeEdge>();
-        Set<Id> nodesWithEdge = new Set<Id>();
 
         if (!allNodeIds.isEmpty()) {
             List<Edge__c> relatedEdges = Database.query(
@@ -146,14 +146,11 @@ public with sharing class OrgChartController {
                     cytoscapeEdge.label = edge.Name;
 
                     edgeList.add(cytoscapeEdge);
-
-                    nodesWithEdge.add(edge.Source__c);
-                    nodesWithEdge.add(edge.Target__c);
                 }
             }
         }
         
-        List<CytoscapeNode> filteredNodes = filterAndSanitizeNodes(nodeMap.values(), nodesWithEdge);
+        List<CytoscapeNode> filteredNodes = filterAndSanitizeNodes(nodeMap.values());
 
         GraphDataWrapper wrapper = new GraphDataWrapper();
         wrapper.nodes = filteredNodes;
@@ -204,18 +201,19 @@ public with sharing class OrgChartController {
         return cyNode;
     }
 
-    private static List<CytoscapeNode> filterAndSanitizeNodes(List<CytoscapeNode> nodes, Set<Id> nodesWithEdge) {
+    private static List<CytoscapeNode> filterAndSanitizeNodes(List<CytoscapeNode> nodes) {
         List<CytoscapeNode> sanitizedNodes = new List<CytoscapeNode>();
         
         for (CytoscapeNode node : nodes) {
             if (String.isBlank(node.label)) continue;
 
-            String prio = (String)node.sfdata.get('SC_APPrio__c');
-            Boolean hasRequiredPrio = prio == '1' || prio == '2' || prio == '3';
+            String prio = (String) node.sfdata.get('SC_APPrio__c');
+            String contactId = (String) node.sfdata.get('ContactId');
             
-            Boolean isLinked = nodesWithEdge.contains(node.id); 
+            Boolean isContact = contactId != null;
+            Boolean hasRequiredPrio = !isContact || (prio == '1' || prio == '2' || prio == '3');
 
-            if (isLinked || hasRequiredPrio) {
+            if (hasRequiredPrio) {
                 sanitizedNodes.add(node);
             } 
         }

@@ -44,8 +44,6 @@ export default class OrgTreeContainer extends LightningElement {
 
         const { data, error } = result || {};
         if (data) {
-            this.debug('[CYTOSCAPE]: Data retrieved', data);
-
             this.cyData = this.generateCyData(data.nodes, data.edges);
             this.debug('[CYTOSCAPE]: Graph data generated', this.cyData);
 
@@ -304,9 +302,15 @@ export default class OrgTreeContainer extends LightningElement {
 
     async handleAddNode() {
         const result = await AddModal.open({ size: 'small' });
-        if (result && typeof result === 'object') {
-            this.handleAddEdge(result);
-        }
+
+        const fields = {
+            'RelatedToAccount__c': this.recordId,
+            'Label__c': result
+        };
+
+        this.createNode({ apiName: 'Node__c', fields })
+            .then(() => this.refreshCyData())
+            .catch((error) => console.error('[CRUD]: create node error', error));
     }
 
     async handleEdgeClick(edgeId) {
@@ -364,6 +368,7 @@ export default class OrgTreeContainer extends LightningElement {
     async deleteEdge(recordId) { return deleteRecord(recordId); }
     async createEdge(recordInput) { return createRecord(recordInput); }
     async updateEdge(recordInput) { return updateRecord(recordInput); }
+    async createNode(recordInput) { return createRecord(recordInput); }
 
     dist2(a, b) {
         const dx = a.x - b.x, dy = a.y - b.y;
