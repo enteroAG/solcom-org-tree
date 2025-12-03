@@ -16,7 +16,7 @@ private class OrgChartControllerTest {
         for (Integer i = 0; i < 10; i++) {
             contacts.add(new Contact(
                 LastName = 'Test Contact ' + i,
-                SC_APPrio__c = String.valueOf(Math.mod(i, 5) + 1),
+                SC_APPrio__c = '1',
                 Department = 'Department ' + Math.mod(i, 3),
                 AccountId = testAccount.Id,
                 RecordTypeId = recTypeIdContact,
@@ -25,26 +25,37 @@ private class OrgChartControllerTest {
             ));     
         }
         insert contacts;
-
-        List<OrgChartLinker__c> linkers = new List<OrgChartLinker__c>();
-        for (Integer i = 0; i < 5; i++) {
-            linkers.add(new OrgChartLinker__c(
-                Source__c = contacts[i * 2].Id,
-                Source_Text__c = contacts[i * 2].Name,
-                Target__c = contacts[i * 2 + 1].Id,
-                Target_Text__c = contacts[i * 2 + 1].Name,
-                Account__c = testAccount.Id
-            )); 
-        }
-        insert linkers;
     }
 
     @IsTest
-    static void testGetOrgChartData() {
+    static void testCreateAndDeleteMissingNodes() {
+        Account testAccount = [SELECT Id FROM Account WHERE Name = 'Test Account' LIMIT 1];
+        List<Contact> allContacts = [
+            SELECT Id, Name, SC_APPrio__c FROM Contact 
+            WHERE AccountId = :testAccount.Id
+        ];
+
+        Assert.areEqual(10, allContacts.size(), '10 contacts should exist');
+
+        Test.startTest();
+            Integer createdNodes = OrgChartController.createMissingNodes(testAccount.Id);
+            Integer deletedNodes = OrgChartController.deleteAllNodes(testAccount.Id);
+        Test.stopTest();
+
+        Assert.areEqual(10, createdNodes, 'Expected 10 nodes to be created.');
+        Assert.areEqual(10, deletedNodes, 'Expected 10 nodes to be deleted.');
+    }
+
+    @IsTest 
+    static void testGetChartData() {
         Account testAccount = [SELECT Id FROM Account WHERE Name = 'Test Account' LIMIT 1];
 
-        List<OrgChartController.CytoscapeNode> nodes = OrgChartController.getOrgChartData(testAccount.Id, 'default');
+        OrgChartController.createMissingNodes(testAccount.Id);
 
-        Assert.areEqual(10, nodes.size(), 'Expected 10 nodes in the org chart data.');
-    }
+        Test.startTest();
+            OrgChartController.GraphDataWrapper graphData = OrgChartController.getChartData(testAccount.Id);
+        Test.stopTest();
+
+        Assert.isNotNull(graphData, 'Expected graph data to be returned.');
+    }   
 }
