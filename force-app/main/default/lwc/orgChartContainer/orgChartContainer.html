@@ -3,13 +3,13 @@
         <div class="slds-m-left_medium">
             <lightning-button variant="neutral" label="Refresh" class="slds-m-right_medium" onclick={handleRefreshCanvas}>
             </lightning-button>
-            <lightning-button variant="brand" label="Add Node" class="slds-m-right_medium" onclick={handleOpenAddNodeModal}>
+            <lightning-button variant="brand" label="Add Placeholder" class="slds-m-right_medium" onclick={handleOpenAddNodeModal}>
             </lightning-button>
-            <lightning-button variant="success" label="Create Nodes From Contacts" class="slds-m-right_medium"
+            <lightning-button variant="success" label="Add Missing Contacts" class="slds-m-right_medium"
                 onclick={handleCreateNodes}>
             </lightning-button>
             <template if:true={debugMode}>
-                <lightning-button variant="destructive" label="Delete Nodes" onclick={handleDeleteNodes}>
+                <lightning-button variant="destructive" label="Delete Nodes and Edges" onclick={handleDeleteNodes}>
                 </lightning-button>
             </template>
         </div>

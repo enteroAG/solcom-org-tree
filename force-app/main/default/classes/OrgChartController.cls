@@ -10,6 +10,10 @@ public with sharing class OrgChartController {
         '4' => 'rgba(135, 140, 145, 1)' 
     };
     
+    private static final List<String> PRIORITY_LIST = new List<String> {
+        '1', '2', '3'
+    };
+
     private static final String EDGE_OBJECT = 'Edge__c';
     private static final String NODE_OBJECT = 'Node__c';
     
@@ -54,12 +58,14 @@ public with sharing class OrgChartController {
         List<Contact> allContacts = [
             SELECT Id, Name FROM Contact 
             WHERE AccountId = :accountId
+            AND SC_APPrio__c IN :PRIORITY_LIST
         ];
         
         Set<Id> existingNodeContactIds = new Set<Id>();
         for (Node__c node : [
             SELECT Record__c FROM Node__c 
-            WHERE RelatedToAccount__c = :accountId AND Record__c != NULL
+            WHERE RelatedToAccount__c = :accountId 
+            AND Record__c != NULL
         ]) {
             existingNodeContactIds.add(node.Record__c);
         }
@@ -131,29 +137,11 @@ public with sharing class OrgChartController {
         List<CytoscapeEdge> edgeList = new List<CytoscapeEdge>();
 
         if (!allNodeIds.isEmpty()) {
-            List<Edge__c> relatedEdges = Database.query(
-                'SELECT ' + String.join(EDGE_FIELDS, ', ') + 
-                ' FROM ' + EDGE_OBJECT +
-                ' WHERE Source__c IN :allNodeIds OR Target__c IN :allNodeIds' 
-            );
-
-            for (Edge__c edge : relatedEdges) {
-                if (nodeMap.containsKey(edge.Source__c) && nodeMap.containsKey(edge.Target__c)) {
-                    CytoscapeEdge cytoscapeEdge = new CytoscapeEdge();
-                    cytoscapeEdge.id = edge.Id;
-                    cytoscapeEdge.source = edge.Source__c;
-                    cytoscapeEdge.target = edge.Target__c;
-                    cytoscapeEdge.label = edge.Name;
-
-                    edgeList.add(cytoscapeEdge);
-                }
-            }
+            edgeList = createEdges(allNodeIds, nodeMap);
         }
-        
-        List<CytoscapeNode> filteredNodes = filterAndSanitizeNodes(nodeMap.values());
 
         GraphDataWrapper wrapper = new GraphDataWrapper();
-        wrapper.nodes = filteredNodes;
+        wrapper.nodes = nodeMap.values();
         wrapper.edges = edgeList;
         
         return wrapper;
@@ -201,22 +189,27 @@ public with sharing class OrgChartController {
         return cyNode;
     }
 
-    private static List<CytoscapeNode> filterAndSanitizeNodes(List<CytoscapeNode> nodes) {
-        List<CytoscapeNode> sanitizedNodes = new List<CytoscapeNode>();
-        
-        for (CytoscapeNode node : nodes) {
-            if (String.isBlank(node.label)) continue;
+    private static List<CytoscapeEdge> createEdges(Set<Id> allNodeIds, Map<Id, CytoscapeNode> nodeMap) {
+        List<CytoscapeEdge> edgeList = new List<CytoscapeEdge>();
 
-            String prio = (String) node.sfdata.get('SC_APPrio__c');
-            String contactId = (String) node.sfdata.get('ContactId');
-            
-            Boolean isContact = contactId != null;
-            Boolean hasRequiredPrio = !isContact || (prio == '1' || prio == '2' || prio == '3');
+        List<Edge__c> relatedEdges = Database.query(
+            'SELECT ' + String.join(EDGE_FIELDS, ', ') + 
+            ' FROM ' + EDGE_OBJECT +
+            ' WHERE Source__c IN :allNodeIds OR Target__c IN :allNodeIds' 
+        );
 
-            if (hasRequiredPrio) {
-                sanitizedNodes.add(node);
-            } 
+        for (Edge__c edge : relatedEdges) {
+            if (nodeMap.containsKey(edge.Source__c) && nodeMap.containsKey(edge.Target__c)) {
+                CytoscapeEdge cytoscapeEdge = new CytoscapeEdge();
+                cytoscapeEdge.id = edge.Id;
+                cytoscapeEdge.source = edge.Source__c;
+                cytoscapeEdge.target = edge.Target__c;
+                cytoscapeEdge.label = edge.Name;
+
+                edgeList.add(cytoscapeEdge);
+            }
         }
-        return sanitizedNodes;
+
+        return edgeList;
     }
 }

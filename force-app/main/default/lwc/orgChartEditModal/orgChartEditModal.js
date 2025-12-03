@@ -45,22 +45,38 @@ export default class OrgChartEditModal extends LightningModal {
             const fields = event.detail.fields;
             this.template.querySelector('lightning-record-edit-form').submit(fields);
         } else {
-            this.close({ 'method' : 'replace', 'payload' : this.selectedContactId });
+            this.close({ 
+                'method' : 'replace', 
+                'payload' : {
+                    'Record__c' : this.selectedContactId,
+                    'IsSalesforceRecord__c' : true,
+                    'Id' : this.nodeId
+                } 
+            });
         }
     }
 
     handleDelete() {
-        this.close({ 'method' : 'delete', 'payload' : this.nodeId });
+        this.close({ 
+            'method' : 'delete', 
+            'payload' : this.nodeId 
+        });
     }
 
     handleSuccess() {
         this.isLoading = false;
-        this.close({ 'method' : 'save', 'status' : 'success' });
+        this.close({ 
+            'method' : 'save', 
+            'status' : 'success' 
+        });
     }
 
     handleError() {
         this.isLoading = false;
-        this.close({ 'method' : 'save', 'status' : 'error' });
+        this.close({ 
+            'method' : 'save', 
+            'status' : 'error' 
+        });
     }
 
     handleContactChange(event) {

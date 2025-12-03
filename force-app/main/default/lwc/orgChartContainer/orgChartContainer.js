@@ -8,6 +8,7 @@ import getChartData from '@salesforce/apex/OrgChartController.getChartData';
 import createMissingNodes from '@salesforce/apex/OrgChartController.createMissingNodes';
 import deleteAllNodes from '@salesforce/apex/OrgChartController.deleteAllNodes';
 
+
 import cytoscapeComplete from '@salesforce/resourceUrl/cytoscapeComplete';
 
 import AddModal from 'c/orgChartAddModal';
@@ -356,9 +357,7 @@ export default class OrgTreeContainer extends LightningElement {
                 this.deleteNodeRecordAction(result.payload);
                 break;
             case 'replace':
-                // Logik für 'replace' hier einfügen
-
-
+                this.replaceNodeRecordAction(result.payload);
                 break;
             default:
                 break;
@@ -396,7 +395,6 @@ export default class OrgTreeContainer extends LightningElement {
     }
 
     createNodeRecordAction(fields) {
-        // ACHTUNG: Ich habe 'node' zu 'fields' korrigiert, basierend auf der Logik im Modal-Handler.
         this.createNode({ apiName: 'Node__c', fields })
             .then(() => this.refreshCyData())
             .catch((error) => console.error('[CRUD]: create node error', error));
@@ -408,12 +406,19 @@ export default class OrgTreeContainer extends LightningElement {
             .catch((error) => console.error('[CRUD]: delete node error', error));
     }
 
+    replaceNodeRecordAction(fields) {
+        this.updateNode({ fields })
+            .then(() => this.refreshCyData())
+            .catch((error) => console.log('[CRUD]: update node error', error.message));
+    }
+
     /* Helpers */
     async deleteEdge(recordId) { return deleteRecord(recordId); }
     async createEdge(recordInput) { return createRecord(recordInput); }
     async updateEdge(recordInput) { return updateRecord(recordInput); }
     async createNode(recordInput) { return createRecord(recordInput); }
     async deleteNode(recordId) { return deleteRecord(recordId); }
+    async updateNode(recordInput) { return updateRecord(recordInput); }
 
 
     dist2(a, b) {

@@ -17,7 +17,7 @@
             <template lwc:else>
                 <!-- Node Edit -->
                 <template if:false={editContact}>
-                    <lightning-record-picker label="Replace Placeholder with" placeholder="Search Contacts..."
+                    <lightning-record-picker label="Replace with" placeholder="Search Contacts..."
                         data-id="contactNodePicker" onchange={handleContactChange} filter={contactFilter}
                         object-api-name="Contact">
                     </lightning-record-picker>
