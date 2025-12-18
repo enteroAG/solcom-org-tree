@@ -170,6 +170,8 @@ public with sharing class OrgChartController {
                 'Name' => cyNode.label,
                 'IsContact' => true,
                 'ContactId' => contactId,
+                'prevBought' => hasExistingOrder(relatedContact),
+                'prevMet' => hasExistingEvent(relatedContact),
                 'SC_APPrio__c' => prio,
                 'Department' => relatedContact.Department,
                 'SC_Function__c' => relatedContact.SC_Function__c,
@@ -213,5 +215,15 @@ public with sharing class OrgChartController {
         }
 
         return edgeList;
+    }
+
+    private static Boolean hasExistingOrder(Contact c) {
+        Integer orderCount = [SELECT COUNT() FROM SC_Order_Contact__c WHERE SC_OrderContact__c = :c.Id];
+        return orderCount > 0;
+    }
+
+    private static Boolean hasExistingEvent(Contact c) {
+        Integer eventCount = [SELECT COUNT() FROM Event WHERE WhoId = :c.Id];
+        return eventCount > 0;
     }
 }

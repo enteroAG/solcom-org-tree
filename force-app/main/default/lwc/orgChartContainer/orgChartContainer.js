@@ -25,7 +25,7 @@ export default class OrgTreeContainer extends LightningElement {
     cytoscapeLoaded = false;
     cytoscapeRendered = false;
 
-    debugMode = true;
+    debugMode = false;
     isLoading = false;
 
     wiredResult;
