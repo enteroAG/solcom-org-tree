@@ -223,7 +223,7 @@ public with sharing class OrgChartController {
     }
 
     private static Boolean hasExistingEvent(Contact c) {
-        Integer eventCount = [SELECT COUNT() FROM Event WHERE WhoId = :c.Id];
+        Integer eventCount = [SELECT COUNT() FROM Task WHERE WhoId = :c.Id AND SC_SubjectSales__c = 'Kunden-Treffen'];
         return eventCount > 0;
     }
 }
