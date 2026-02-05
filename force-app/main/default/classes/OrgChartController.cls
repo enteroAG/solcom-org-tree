@@ -117,7 +117,8 @@ public with sharing class OrgChartController {
         
         List<Contact> allContacts = Database.query(
             'SELECT ' + String.join(CONTACT_FIELDS, ', ') +
-            ' FROM Contact WHERE AccountId = :accountId'
+            ' FROM Contact WHERE AccountId = :accountId' +
+            ' AND SC_InactiveContact__c = FALSE'
         );
         Map<Id, Contact> contactMap = new Map<Id, Contact>(allContacts);
         

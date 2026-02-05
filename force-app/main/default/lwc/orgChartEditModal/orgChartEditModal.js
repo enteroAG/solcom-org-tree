@@ -1,6 +1,6 @@
 import { LightningElement, api } from 'lwc';
-import LightningModal from 'lightning/modal';
 
+import LightningModal from 'lightning/modal';
 import NAME from "@salesforce/schema/Contact.Name";
 import DEPARTMENT from "@salesforce/schema/Contact.Department";
 import PRIO from "@salesforce/schema/Contact.SC_APPrio__c";
@@ -77,6 +77,13 @@ export default class OrgChartEditModal extends LightningModal {
             'method': 'save',
             'status': 'error'
         });
+    }
+
+    handleLinkToRecord() {
+        this.close({
+            'method': 'redirect',
+            'payload': this.recordId
+        })
     }
 
     handleContactChange(event) {

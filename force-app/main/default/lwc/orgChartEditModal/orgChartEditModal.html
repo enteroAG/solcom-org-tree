@@ -34,12 +34,23 @@
         </lightning-modal-body>
 
         <lightning-modal-footer>
-            <lightning-button disabled={isLoading} variant="destructive" onclick={handleDelete}
-                class="slds-m-right_medium" label="Delete">
-            </lightning-button>
+            <lightning-layout multiple-rows="true">
+                <lightning-layout-item padding="horizontal-small" alignment-bump="right">
+                    <lightning-button variant="neutral" onclick={handleLinkToRecord} label="Link to Record">
+                    </lightning-button>
+                </lightning-layout-item>
 
-            <lightning-button disabled={isLoading} variant="brand" onclick={handleSave} label="Save">
-            </lightning-button>
+                <lightning-layout-item padding="horizontal-small">
+                    <lightning-button disabled={isLoading} variant="destructive" onclick={handleDelete} label="Delete">
+                    </lightning-button>
+                </lightning-layout-item>
+
+                <lightning-layout-item padding="horizontal-small">
+                    <lightning-button disabled={isLoading} variant="brand" onclick={handleSave} label="Save">
+                    </lightning-button>
+                </lightning-layout-item>
+            </lightning-layout>
+            
         </lightning-modal-footer>
 
     </lightning-record-edit-form>

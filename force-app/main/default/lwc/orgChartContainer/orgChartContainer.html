@@ -1,18 +1,31 @@
 <template>
     <lightning-card>
-        <div class="slds-m-left_medium">
-            <lightning-button variant="neutral" label="Refresh" class="slds-m-right_medium" onclick={handleRefreshCanvas}>
-            </lightning-button>
-            <lightning-button variant="brand" label="Add Placeholder" class="slds-m-right_medium" onclick={handleOpenAddNodeModal}>
-            </lightning-button>
-            <lightning-button variant="success" label="Add Missing Contacts" class="slds-m-right_medium"
-                onclick={handleCreateNodes}>
-            </lightning-button>
-            <template if:true={debugMode}>
-                <lightning-button variant="destructive" label="Delete Nodes and Edges" onclick={handleDeleteNodes}>
+        <lightning-layout multiple-rows="true">
+            <lightning-layout-item padding="around-small">
+                <lightning-button variant="neutral" label="Refresh"
+                    onclick={handleRefreshCanvas}>
                 </lightning-button>
+            </lightning-layout-item>
+
+            <lightning-layout-item padding="around-small">
+                <lightning-button variant="brand" label="Add Placeholder"
+                    onclick={handleOpenAddNodeModal}>
+                </lightning-button>
+            </lightning-layout-item>
+
+            <lightning-layout-item padding="around-small">
+                <lightning-button variant="success" label="Add Missing Contacts"
+                    onclick={handleCreateNodes}></lightning-button>
+            </lightning-layout-item>
+
+            <template if:true={debugMode}>
+                <lightning-layout-item padding="around-small">
+                    <lightning-button variant="destructive" label="Delete Nodes and Edges" onclick={handleDeleteNodes}>
+                    </lightning-button>
+                </lightning-layout-item>
             </template>
-        </div>
+        </lightning-layout>
+
         <div class="slds-p-around_medium">
             <template if:true={isLoading}>
                 <div class="slds-spinner_container">

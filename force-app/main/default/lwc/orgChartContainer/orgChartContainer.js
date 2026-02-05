@@ -1,4 +1,5 @@
 import { LightningElement, api, wire } from 'lwc';
+import { NavigationMixin } from "lightning/navigation";
 import { loadScript } from 'lightning/platformResourceLoader';
 import { style, layout, htmlConfig } from './cytoscapeConfig';
 import { refreshApex } from '@salesforce/apex';
@@ -8,24 +9,23 @@ import getChartData from '@salesforce/apex/OrgChartController.getChartData';
 import createMissingNodes from '@salesforce/apex/OrgChartController.createMissingNodes';
 import deleteAllNodes from '@salesforce/apex/OrgChartController.deleteAllNodes';
 
-
 import cytoscapeComplete from '@salesforce/resourceUrl/cytoscapeComplete';
 
 import AddModal from 'c/orgChartAddModal';
 import EditModal from 'c/orgChartEditModal';
 import ConfirmPrompt from 'c/orgChartConfirmPrompt';
 
-export default class OrgTreeContainer extends LightningElement {
+export default class OrgTreeContainer extends NavigationMixin(LightningElement) {
     @api recordId;
     @api cHeight;
     @api fitLevel;
+    @api debugMode;
 
     cyto;
     cyData = [];
     cytoscapeLoaded = false;
     cytoscapeRendered = false;
 
-    debugMode = false;
     isLoading = false;
 
     wiredResult;
@@ -277,7 +277,7 @@ export default class OrgTreeContainer extends LightningElement {
     }
 
     /* CRUD Handlers */
-    /* UI Event and Direct Handlers (Level 1) */
+    /* UI Event and Direct Handlers */
     handleAddEdge(edge) {
         const fields = {
             'Source__c': edge.source,
@@ -325,7 +325,7 @@ export default class OrgTreeContainer extends LightningElement {
         });
     }
 
-    /* UI Flow Handlers (Level 2) */
+    /* UI Flow Handlers */
     async handleOpenAddNodeModal() {
         const result = await AddModal.open({ size: 'small' });
 
@@ -359,6 +359,9 @@ export default class OrgTreeContainer extends LightningElement {
             case 'replace':
                 this.replaceNodeRecordAction(result.payload);
                 break;
+            case 'redirect':
+                this.navigateToRecord(result.payload);
+                break;
             default:
                 break;
         }
@@ -375,7 +378,19 @@ export default class OrgTreeContainer extends LightningElement {
         }
     }
 
-    /* Data Actions (Level 3) */
+    navigateToRecord(recordId) {
+        const pageref = {
+            type: 'standard__recordPage',
+            attributes: {
+                recordId: recordId,
+                actionName: 'view'
+            }
+        };
+
+        this[NavigationMixin.Navigate](pageref);
+    }
+
+    /* Data Actions */
     createEdgeRecordAction(fields) {
         this.createEdge({ apiName: 'Edge__c', fields })
             .then(() => this.refreshCyData())
